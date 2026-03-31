@@ -11,9 +11,12 @@ typedef struct {
     int nroParesEstacao;
 } Cabecalho;
 
-void ler_cabecalho(FILE *fp, Cabecalho *c);
-void escrever_cabecalho(FILE *fp, Cabecalho *c);
-void atualizar_status(FILE *fp, char status);
+
+
+void initCabecalho(Cabecalho *c);
+void lerCabecalho(FILE *fp, Cabecalho *c);
+void escreverCabecalho(FILE *fp, Cabecalho *c);
+void atualizarStatus(FILE *fp, char novoStatus);
 
 
 #endif

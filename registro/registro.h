@@ -1,34 +1,23 @@
 #ifndef REGISTRO_H
 #define REGISTRO_H
-
 #include <stdio.h>
-#include <stdlib.h>
-
 
 typedef struct {
     char removido;
-    int prox;
-
-    int codestacao;
-    int codlinha;
-    int codproxestacao;
-    int distproxestacao;
-    int codlinhaintegra;
-    int codestintegra;
-
-    int tamNomeestacao;
-    char nomeEstacao[50];
-
-    int tamNomelinha;
-    char nomelinha[50];
-
+    int proximo;
+    int codEstacao;
+    int codLinha;
+    int codProxEstacao;
+    int distProxEstacao;
+    int codLinhaIntegra;
+    int codEstIntegra;
+    int tamNomeEstacao;
+    char nomeEstacao[100];
+    int tamNomeLinha;
+    char nomeLinha[100];
 } Registro;
 
-
-void initRegistro(Registro *r); 
-Registro lerRegistroBin(FILE *fp);
-void escreverRegistroBin(FILE *fp, Registro *r); 
-int lerRegistroCSV(FILE *csv, Registro *r);
-void printRegistro(Registro *r);
+void parse_linha_csv(char *linha, Registro *r);
+void escreve_registro_bin(FILE *bin, Registro *r);
 
 #endif

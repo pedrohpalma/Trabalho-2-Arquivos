@@ -78,18 +78,26 @@ void escreve_registro_bin(FILE *bin, Registro *r) {
 }
 
 // Lê exatamente 80 bytes do binário e decodifica para a struct Registro
+// Lê o registro do binário otimizando pulos de registros deletados
 int le_registro_bin(FILE *bin, Registro *r) {
-    char buffer[80];
-    
-    // Se não conseguir ler os 80 bytes de uma vez, chegou ao fim do arquivo (EOF)
-    if (fread(buffer, 1, 80, bin) != 80) {
-        return 0; 
+    // Lê APENAS o campo 'removido' (1 byte)
+    if (fread(&r->removido, 1, 1, bin) != 1) {
+        return 0; // Retorna 0 quando chega no Fim do Arquivo (EOF)
     }
+    
+    // REGRA DO PROFESSOR: Pular registros removidos com fseek
+    if (r->removido == '1') {
+        fseek(bin, 79, SEEK_CUR); // Pula os 79 bytes restantes deste registro
+        return 2; // Retorna o código 2 indicando "Registro Pulado"
+    }
+    
+    // Se não está removido, lê os 79 bytes restantes
+    char buffer[79];
+    fread(buffer, 1, 79, bin);
     
     int pos = 0;
     
-    // Lê campos de controle e de tamanho fixo
-    r->removido = buffer[pos++];
+    // Lendo campos de tamanho fixo
     memcpy(&r->proximo, &buffer[pos], 4); pos += 4;
     memcpy(&r->codEstacao, &buffer[pos], 4); pos += 4;
     memcpy(&r->codLinha, &buffer[pos], 4); pos += 4;
@@ -98,20 +106,20 @@ int le_registro_bin(FILE *bin, Registro *r) {
     memcpy(&r->codLinhaIntegra, &buffer[pos], 4); pos += 4;
     memcpy(&r->codEstIntegra, &buffer[pos], 4); pos += 4;
     
-    // Lê campo de tamanho variável: Nome da Estação
+    // Lendo campo variável: Nome da Estação
     memcpy(&r->tamNomeEstacao, &buffer[pos], 4); pos += 4;
     if (r->tamNomeEstacao > 0) {
         memcpy(r->nomeEstacao, &buffer[pos], r->tamNomeEstacao);
     }
-    r->nomeEstacao[r->tamNomeEstacao] = '\0'; // Garante o fim da string no C
+    r->nomeEstacao[r->tamNomeEstacao] = '\0';
     pos += r->tamNomeEstacao;
     
-    // Lê campo de tamanho variável: Nome da Linha
+    // Lendo campo variável: Nome da Linha
     memcpy(&r->tamNomeLinha, &buffer[pos], 4); pos += 4;
     if (r->tamNomeLinha > 0) {
         memcpy(r->nomeLinha, &buffer[pos], r->tamNomeLinha);
     }
-    r->nomeLinha[r->tamNomeLinha] = '\0'; // Garante o fim da string no C
+    r->nomeLinha[r->tamNomeLinha] = '\0';
     
-    return 1;
+    return 1; // Retorna 1 indicando sucesso na leitura
 }

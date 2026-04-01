@@ -116,19 +116,15 @@ void funcionalidade_2(char *arqBin) {
 
     int encontrados = 0;
     Registro r;
+    int status_leitura;
     
     // Itera pelos registros usando a nossa nova função de leitura
-    while (le_registro_bin(bin, &r)) {
+    while ((status_leitura = le_registro_bin(bin, &r)) != 0){
         // Ignora os registros marcados como removidos logicamente ('1')
-        if (r.removido == '1') continue;
+        if (status_leitura == '2') continue;
         
         encontrados++;
         
-        // ========================================================
-        // ÁREA DE FORMATAÇÃO DO PRINT
-        // Ajuste aqui se o seu PDF exigir um layout visual diferente
-        // Valores nulos numéricos (-1) e strings vazias (tamanho 0)
-        // ========================================================
         
         printf("%d ", r.codEstacao);
         printf("%s ", r.nomeEstacao);

@@ -2,5 +2,6 @@
 #define OPERACOES_H
 
 void funcionalidade_1(char *arqEntrada, char *arqSaida);
+void funcionalidade_2(char *arqBin);
 
 #endif

@@ -20,4 +20,7 @@ typedef struct {
 void parse_linha_csv(char *linha, Registro *r);
 void escreve_registro_bin(FILE *bin, Registro *r);
 
+int le_registro_bin(FILE *bin, Registro *r);
+
+
 #endif

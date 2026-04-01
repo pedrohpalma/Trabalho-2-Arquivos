@@ -16,7 +16,13 @@ int main() {
         // Lê os nomes dos arquivos
         scanf("%s %s", arqEntrada, arqSaida);
         funcionalidade_1(arqEntrada, arqSaida);
-    } 
+    }
+
+    if(operacao == 2){
+        char arqBin[100];
+        scanf("%s", arqBin);
+        funcionalidade_2(arqBin);
+    }
     // Outras operações poderiam ser implementadas na sequência
     return 0;
 }

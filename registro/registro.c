@@ -76,3 +76,42 @@ void escreve_registro_bin(FILE *bin, Registro *r) {
         fwrite(&cifrao, 1, 1, bin);
     }
 }
+
+// Lê exatamente 80 bytes do binário e decodifica para a struct Registro
+int le_registro_bin(FILE *bin, Registro *r) {
+    char buffer[80];
+    
+    // Se não conseguir ler os 80 bytes de uma vez, chegou ao fim do arquivo (EOF)
+    if (fread(buffer, 1, 80, bin) != 80) {
+        return 0; 
+    }
+    
+    int pos = 0;
+    
+    // Lê campos de controle e de tamanho fixo
+    r->removido = buffer[pos++];
+    memcpy(&r->proximo, &buffer[pos], 4); pos += 4;
+    memcpy(&r->codEstacao, &buffer[pos], 4); pos += 4;
+    memcpy(&r->codLinha, &buffer[pos], 4); pos += 4;
+    memcpy(&r->codProxEstacao, &buffer[pos], 4); pos += 4;
+    memcpy(&r->distProxEstacao, &buffer[pos], 4); pos += 4;
+    memcpy(&r->codLinhaIntegra, &buffer[pos], 4); pos += 4;
+    memcpy(&r->codEstIntegra, &buffer[pos], 4); pos += 4;
+    
+    // Lê campo de tamanho variável: Nome da Estação
+    memcpy(&r->tamNomeEstacao, &buffer[pos], 4); pos += 4;
+    if (r->tamNomeEstacao > 0) {
+        memcpy(r->nomeEstacao, &buffer[pos], r->tamNomeEstacao);
+    }
+    r->nomeEstacao[r->tamNomeEstacao] = '\0'; // Garante o fim da string no C
+    pos += r->tamNomeEstacao;
+    
+    // Lê campo de tamanho variável: Nome da Linha
+    memcpy(&r->tamNomeLinha, &buffer[pos], 4); pos += 4;
+    if (r->tamNomeLinha > 0) {
+        memcpy(r->nomeLinha, &buffer[pos], r->tamNomeLinha);
+    }
+    r->nomeLinha[r->tamNomeLinha] = '\0'; // Garante o fim da string no C
+    
+    return 1;
+}

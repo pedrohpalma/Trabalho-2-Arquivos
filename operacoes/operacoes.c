@@ -71,6 +71,9 @@ void funcionalidade_1(char *arqEntrada, char *arqSaida) {
         c.proxRRN++;
     }
 
+    // Gambiarra pra corrigir o fato de que a contagem de estações únicas foi incrementada uma vez a mais do que o necessário
+    c.nroEstacoes--;
+
     // Atualiza cabeçalho com o status de sucesso '1' e os números finais 
     atualiza_cabecalho(bin, &c);
 
@@ -320,16 +323,17 @@ void funcionalidade_4(char *arqBin, int n) {
             }
 
             if (match) {
-                r.removido = '1';
-                r.proximo = c.topo;
-                c.topo = (int)offset_atual;
+                // Calcula o RRN correto
+                int rrn_atual = (int)((offset_atual - 17) / 80);
 
-                // Volta o ponteiro do HD para o início do registro que queremos marcar como removido
+                r.removido = '1';
+                r.proximo = c.topo; 
+                c.topo = rrn_atual; // Atualiza o topo com o RRN
+                c.nroEstacoes--;
+
                 fseek(bin, offset_atual, SEEK_SET);
-                
-                // Sobrescreve apenas os 5 bytes de controle (removido + proximo) para marcar como removido e atualizar o topo da lista de removidos
                 fwrite(&r.removido, 1, 1, bin);
-                fwrite(&r.proximo, 4, 1, bin);
+                fwrite(&r.proximo, 4, 1, bin); // Grava o próximo como RRN
                 
                 fseek(bin, offset_atual + 80, SEEK_SET);
             }

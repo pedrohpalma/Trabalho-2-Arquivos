@@ -7,39 +7,48 @@ void parse_linha_csv(char *linha, Registro *r) {
     char *ptr = linha;
     char campo[256];
 
-    // codEstacao (não aceita nulo)
+    // 1. codEstacao (não aceita nulo)
     get_next_field(&ptr, campo);
     r->codEstacao = atoi(campo);
 
-    // nomeEstacao (não aceita nulo)
+    // 2. nomeEstacao (não aceita nulo)
     get_next_field(&ptr, campo);
     r->tamNomeEstacao = strlen(campo);
     strcpy(r->nomeEstacao, campo);
 
-    // codLinha
+    // 3. codLinha
     get_next_field(&ptr, campo);
-    r->codLinha = (campo[0] == '\0') ? -1 : atoi(campo);
+    r->codLinha = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // nomeLinha
+    // 4. nomeLinha
     get_next_field(&ptr, campo);
-    r->tamNomeLinha = strlen(campo);
-    strcpy(r->nomeLinha, campo);
+    if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
+        r->tamNomeLinha = 0;
+        r->nomeLinha[0] = '\0';
+    } else {
+        r->tamNomeLinha = strlen(campo);
+        strcpy(r->nomeLinha, campo);
+    }
 
-    // codProxEstacao
+    // 5. codProxEstacao
     get_next_field(&ptr, campo);
-    r->codProxEstacao = (campo[0] == '\0') ? -1 : atoi(campo);
+    r->codProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // distProxEstacao
+    // 6. distProxEstacao
     get_next_field(&ptr, campo);
-    r->distProxEstacao = (campo[0] == '\0') ? -1 : atoi(campo);
+    r->distProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // codLinhaIntegra
+    // 7. codLinhaIntegra
     get_next_field(&ptr, campo);
-    r->codLinhaIntegra = (campo[0] == '\0') ? -1 : atoi(campo);
+    r->codLinhaIntegra = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // codEstIntegra
+    // 8. codEstIntegra (O último campo, que costuma trazer o "Enter" escondido)
     get_next_field(&ptr, campo);
-    r->codEstIntegra = (campo[0] == '\0') ? -1 : atoi(campo);
+    if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
+        r->codEstIntegra = -1;
+    } else {
+        r->codEstIntegra = atoi(campo);
+    }
 
     // Campos de controle
     r->removido = '0';
@@ -78,7 +87,6 @@ void escreve_registro_bin(FILE *bin, Registro *r) {
 }
 
 // Lê exatamente 80 bytes do binário e decodifica para a struct Registro
-// Lê o registro do binário otimizando pulos de registros deletados
 int le_registro_bin(FILE *bin, Registro *r) {
     // Lê APENAS o campo 'removido' (1 byte)
     if (fread(&r->removido, 1, 1, bin) != 1) {
@@ -122,4 +130,57 @@ int le_registro_bin(FILE *bin, Registro *r) {
     r->nomeLinha[r->tamNomeLinha] = '\0';
     
     return 1; // Retorna 1 indicando sucesso na leitura
+}
+
+void imprime_registro(Registro *r) {
+    printf("%d ", r->codEstacao);
+    
+    if (r->tamNomeEstacao > 0) printf("%s ", r->nomeEstacao);
+    else printf("NULO ");
+    
+    if (r->codLinha == -1) printf("NULO ");
+    else printf("%d ", r->codLinha);
+    
+    if (r->tamNomeLinha == 0) printf("NULO ");
+    else printf("%s ", r->nomeLinha);
+    
+    if (r->codProxEstacao == -1) printf("NULO ");
+    else printf("%d ", r->codProxEstacao);
+    
+    if (r->distProxEstacao == -1) printf("NULO ");
+    else printf("%d ", r->distProxEstacao);
+    
+    if (r->codLinhaIntegra == -1) printf("NULO ");
+    else printf("%d ", r->codLinhaIntegra);
+    
+    if (r->codEstIntegra == -1) printf("NULO\n");
+    else printf("%d\n", r->codEstIntegra);
+}
+
+int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
+    if (strcmp(campo, "codEstacao") == 0) {
+        return isNulo ? (r->codEstacao == -1) : (r->codEstacao == valorInt);
+    } 
+    else if (strcmp(campo, "codLinha") == 0) {
+        return isNulo ? (r->codLinha == -1) : (r->codLinha == valorInt);
+    }
+    else if (strcmp(campo, "codProxEstacao") == 0) {
+        return isNulo ? (r->codProxEstacao == -1) : (r->codProxEstacao == valorInt);
+    }
+    else if (strcmp(campo, "distProxEstacao") == 0) {
+        return isNulo ? (r->distProxEstacao == -1) : (r->distProxEstacao == valorInt);
+    }
+    else if (strcmp(campo, "codLinhaIntegra") == 0) {
+        return isNulo ? (r->codLinhaIntegra == -1) : (r->codLinhaIntegra == valorInt);
+    }
+    else if (strcmp(campo, "codEstIntegra") == 0) {
+        return isNulo ? (r->codEstIntegra == -1) : (r->codEstIntegra == valorInt);
+    }
+    else if (strcmp(campo, "nomeEstacao") == 0) {
+        return isNulo ? (r->tamNomeEstacao == 0) : (strcmp(r->nomeEstacao, valorStr) == 0);
+    }
+    else if (strcmp(campo, "nomeLinha") == 0) {
+        return isNulo ? (r->tamNomeLinha == 0) : (strcmp(r->nomeLinha, valorStr) == 0);
+    }
+    return 0; // Campo não reconhecido
 }

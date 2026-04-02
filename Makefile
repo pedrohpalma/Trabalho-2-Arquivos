@@ -1,27 +1,5 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -g
+all:
+	gcc -Wall -Wextra -std=c11 -g -o programaTrab main.c arquivos/arquivos.c cabecalho/cabecalho.c operacoes/operacoes.c registro/registro.c utilitarios/utils.c -lm
 
-TARGET = trabalho1
-
-SRC = \
-	main.c \
-	arquivos/arquivos.c \
-	cabecalho/cabecalho.c \
-	operacoes/operacoes.c \
-	registro/registro.c \
-	utilitarios/utils.c
-
-OBJ = $(SRC:.c=.o)
-
-.PHONY: all clean
-
-all: $(TARGET)
-
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-clean:
-	$(RM) $(OBJ) $(TARGET)
+run:
+	./programaTrab

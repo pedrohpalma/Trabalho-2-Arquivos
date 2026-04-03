@@ -23,6 +23,7 @@ void escreve_registro_bin(FILE *bin, Registro *r);
 int le_registro_bin(FILE *bin, Registro *r);
 void imprime_registro(Registro *r);
 int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo);
-
+void le_registro_teclado(Registro *r);
+void atualiza_campo(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo);
 
 #endif

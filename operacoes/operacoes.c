@@ -349,3 +349,165 @@ void funcionalidade_4(char *arqBin, int n) {
 
     BinarioNaTela(arqBin);
 }
+
+void funcionalidade_5(char *arqBin, int n) {
+    // Abrir o arquivo binário no modo leitura e escrita ("rb+")
+    FILE *bin = abrir_arquivo(arqBin, "rb+");
+    if (!bin) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    Cabecalho c;
+    // Verifica a consistência do arquivo lendo o status
+    if (fread(&c.status, 1, 1, bin) != 1 || c.status == '0') {
+        printf("Falha no processamento do arquivo.\n");
+        fechar_arquivo(bin);
+        return;
+    }
+
+    // Lê os demais dados do cabeçalho
+    fread(&c.topo, 4, 1, bin);
+    fread(&c.proxRRN, 4, 1, bin);
+    fread(&c.nroEstacoes, 4, 1, bin);
+    fread(&c.nroParesEstacao, 4, 1, bin);
+
+    // Muda o status para inconsistente (0) enquanto está processando inserções
+    c.status = '0';
+    fseek(bin, 0, SEEK_SET);
+    fwrite(&c.status, 1, 1, bin);
+
+    for (int i = 0; i < n; i++) {
+        Registro r;
+        le_registro_teclado(&r); // Usa nossa função modular para processar a linha
+
+        // VERIFICAÇÃO DE REUSO DE ESPAÇO:
+        if (c.topo != -1) { 
+            // Reaproveitamento da pilha de registros removidos
+            int rrn_reuso = c.topo;
+            long offset = 17 + (rrn_reuso * 80);
+
+            // Descobre quem é o próximo removido para atualizar o topo do cabeçalho
+            int proximo_removido;
+            fseek(bin, offset + 1, SEEK_SET); // Pula 1 byte do char 'removido'
+            fread(&proximo_removido, 4, 1, bin);
+
+            // Atualiza o topo do arquivo e sobrescreve o registro na posição reutilizada
+            c.topo = proximo_removido;
+            fseek(bin, offset, SEEK_SET);
+            escreve_registro_bin(bin, &r); // Reaproveita a escrita modular
+        } else {
+            // Inserção no final do arquivo caso não existam removidos
+            long offset = 17 + (c.proxRRN * 80);
+            fseek(bin, offset, SEEK_SET);
+            escreve_registro_bin(bin, &r); // Reaproveita a escrita modular
+            c.proxRRN++;
+        }
+
+        // CORREÇÃO: Incrementando o número de pares de estação a cada inserção!
+        c.nroParesEstacao++;
+    }
+
+    // Nota de PDF: Em Inserções, "nroEstacoes" não deve ser alterado (já mantido intacto)
+
+    // A função atualiza_cabecalho já muda o status para '1' e reescreve os dados atualizados!
+    atualiza_cabecalho(bin, &c);
+    
+    fechar_arquivo(bin);
+
+    BinarioNaTela(arqBin);
+}
+
+void funcionalidade_6(char *arqBin, int n) {
+    FILE *bin = abrir_arquivo(arqBin, "rb+");
+    if (!bin) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    Cabecalho c;
+    if (fread(&c.status, 1, 1, bin) != 1 || c.status == '0') {
+        printf("Falha no processamento do arquivo.\n");
+        fechar_arquivo(bin);
+        return;
+    }
+
+    fread(&c.topo, 4, 1, bin);
+    fread(&c.proxRRN, 4, 1, bin);
+    fread(&c.nroEstacoes, 4, 1, bin);
+    fread(&c.nroParesEstacao, 4, 1, bin);
+
+    // Marca como inconsistente
+    c.status = '0';
+    fseek(bin, 0, SEEK_SET);
+    fwrite(&c.status, 1, 1, bin);
+
+    for (int i = 0; i < n; i++) {
+        // LEITURA DOS CRITÉRIOS DE BUSCA (M)
+        int m;
+        scanf("%d", &m);
+        char camposBusca[m][50], valoresStrBusca[m][100];
+        int valoresIntBusca[m], isNuloBusca[m];
+
+        for (int j = 0; j < m; j++) {
+            scanf("%s", camposBusca[j]);
+            ScanQuoteString(valoresStrBusca[j]);
+            isNuloBusca[j] = (strcmp(valoresStrBusca[j], "") == 0);
+            valoresIntBusca[j] = isNuloBusca[j] ? -1 : atoi(valoresStrBusca[j]);
+        }
+
+        // LEITURA DOS VALORES DE ATUALIZAÇÃO (P)
+        int p;
+        scanf("%d", &p);
+        char camposAtualiza[p][50], valoresStrAtualiza[p][100];
+        int valoresIntAtualiza[p], isNuloAtualiza[p];
+
+        for (int j = 0; j < p; j++) {
+            scanf("%s", camposAtualiza[j]);
+            ScanQuoteString(valoresStrAtualiza[j]);
+            isNuloAtualiza[j] = (strcmp(valoresStrAtualiza[j], "") == 0);
+            valoresIntAtualiza[j] = isNuloAtualiza[j] ? -1 : atoi(valoresStrAtualiza[j]);
+        }
+
+        // Vai para o primeiro registro de dados (byte 17) para iniciar a varredura
+        fseek(bin, 17, SEEK_SET);
+
+        Registro r;
+        int status_leitura;
+        while ((status_leitura = le_registro_bin(bin, &r)) != 0) {
+            // Ignora registros deletados
+            if (status_leitura == 2) continue;
+
+            int match = 1;
+            for (int j = 0; j < m; j++) {
+                if (!atende_criterio(&r, camposBusca[j], valoresStrBusca[j], valoresIntBusca[j], isNuloBusca[j])) {
+                    match = 0;
+                    break;
+                }
+            }
+
+            if (match) {
+                // Atualiza em memória
+                for (int j = 0; j < p; j++) {
+                    atualiza_campo(&r, camposAtualiza[j], valoresStrAtualiza[j], valoresIntAtualiza[j], isNuloAtualiza[j]);
+                }
+
+                // Volta o ponteiro 80 bytes para sobrescrever o próprio registro lido
+                fseek(bin, -80, SEEK_CUR);
+                
+                // Sobrescreve: escreve_registro_bin já cuida do tamanho e completa com cifrões ('$')
+                escreve_registro_bin(bin, &r);
+                
+                // O fwrite dentro da escreve_registro_bin naturalmente move o ponteiro os 80 bytes pra frente,
+                // deixando-o na posição perfeita para a próxima iteração do while!
+            }
+        }
+    }
+
+    // Finaliza as atualizações e restaura consistência ('1')
+    atualiza_cabecalho(bin, &c);
+    fechar_arquivo(bin);
+
+    // Avaliação
+    BinarioNaTela(arqBin);
+}

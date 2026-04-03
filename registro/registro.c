@@ -184,3 +184,67 @@ int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int 
     }
     return 0; // Campo não reconhecido
 }
+
+
+// Lê dados do terminal e constrói o Registro (reaproveitando o ScanQuoteString fornecido)
+void le_registro_teclado(Registro *r) {
+    char buffer[256];
+
+    ScanQuoteString(buffer);
+    r->codEstacao = (buffer[0] == '\0') ? -1 : atoi(buffer);
+
+    ScanQuoteString(buffer);
+    r->tamNomeEstacao = strlen(buffer);
+    strcpy(r->nomeEstacao, buffer);
+
+    ScanQuoteString(buffer);
+    r->codLinha = (buffer[0] == '\0') ? -1 : atoi(buffer);
+
+    ScanQuoteString(buffer);
+    r->tamNomeLinha = strlen(buffer);
+    strcpy(r->nomeLinha, buffer);
+
+    ScanQuoteString(buffer);
+    r->codProxEstacao = (buffer[0] == '\0') ? -1 : atoi(buffer);
+
+    ScanQuoteString(buffer);
+    r->distProxEstacao = (buffer[0] == '\0') ? -1 : atoi(buffer);
+
+    ScanQuoteString(buffer);
+    r->codLinhaIntegra = (buffer[0] == '\0') ? -1 : atoi(buffer);
+
+    ScanQuoteString(buffer);
+    r->codEstIntegra = (buffer[0] == '\0') ? -1 : atoi(buffer);
+
+    // Campos de controle lógicos para um novo registro
+    r->removido = '0';
+    r->proximo = -1;
+}
+
+// Atualiza um campo específico do registro com o novo valor
+void atualiza_campo(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
+    if (strcmp(campo, "codEstacao") == 0) r->codEstacao = valorInt;
+    else if (strcmp(campo, "codLinha") == 0) r->codLinha = valorInt;
+    else if (strcmp(campo, "codProxEstacao") == 0) r->codProxEstacao = valorInt;
+    else if (strcmp(campo, "distProxEstacao") == 0) r->distProxEstacao = valorInt;
+    else if (strcmp(campo, "codLinhaIntegra") == 0) r->codLinhaIntegra = valorInt;
+    else if (strcmp(campo, "codEstIntegra") == 0) r->codEstIntegra = valorInt;
+    else if (strcmp(campo, "nomeEstacao") == 0) {
+        if (isNulo) {
+            r->tamNomeEstacao = 0;
+            r->nomeEstacao[0] = '\0';
+        } else {
+            r->tamNomeEstacao = strlen(valorStr);
+            strcpy(r->nomeEstacao, valorStr);
+        }
+    }
+    else if (strcmp(campo, "nomeLinha") == 0) {
+        if (isNulo) {
+            r->tamNomeLinha = 0;
+            r->nomeLinha[0] = '\0';
+        } else {
+            r->tamNomeLinha = strlen(valorStr);
+            strcpy(r->nomeLinha, valorStr);
+        }
+    }
+}

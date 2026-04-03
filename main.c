@@ -40,6 +40,18 @@ int main() {
             funcionalidade_4(arqBin, n);
             break;
 
+        case 5:
+            // Funcionalidade 5: Insert
+            scanf("%s %d", arqBin, &n);
+            funcionalidade_5(arqBin, n);
+            break;
+
+        case 6:
+            // Funcionalidade 6: Update in-place
+            scanf("%s %d", arqBin, &n);
+            funcionalidade_6(arqBin, n);
+            break;
+
         default:
             printf("Funcionalidade invalida.\n");
             break;

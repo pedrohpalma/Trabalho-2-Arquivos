@@ -170,10 +170,12 @@ int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int 
     else if (strcmp(campo, "distProxEstacao") == 0) {
         return isNulo ? (r->distProxEstacao == -1) : (r->distProxEstacao == valorInt);
     }
-    else if (strcmp(campo, "codLinhaIntegra") == 0) {
+    // Suporte para eventuais erros de digitação do PDF (com 'l' no lugar do 'I' maiúsculo)
+    else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) {
         return isNulo ? (r->codLinhaIntegra == -1) : (r->codLinhaIntegra == valorInt);
     }
-    else if (strcmp(campo, "codEstIntegra") == 0) {
+    // CORREÇÃO: Aceita a variação do nome do campo usada nos casos de teste
+    else if (strcmp(campo, "codEstIntegra") == 0 || strcmp(campo, "codEstacaoIntegra") == 0) {
         return isNulo ? (r->codEstIntegra == -1) : (r->codEstIntegra == valorInt);
     }
     else if (strcmp(campo, "nomeEstacao") == 0) {
@@ -227,8 +229,13 @@ void atualiza_campo(Registro *r, char *campo, char *valorStr, int valorInt, int 
     else if (strcmp(campo, "codLinha") == 0) r->codLinha = valorInt;
     else if (strcmp(campo, "codProxEstacao") == 0) r->codProxEstacao = valorInt;
     else if (strcmp(campo, "distProxEstacao") == 0) r->distProxEstacao = valorInt;
-    else if (strcmp(campo, "codLinhaIntegra") == 0) r->codLinhaIntegra = valorInt;
-    else if (strcmp(campo, "codEstIntegra") == 0) r->codEstIntegra = valorInt;
+    
+    // Suporte para eventuais erros de digitação do PDF
+    else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) r->codLinhaIntegra = valorInt;
+    
+    // CORREÇÃO: Aceita a variação do nome do campo usada nos casos de teste
+    else if (strcmp(campo, "codEstIntegra") == 0 || strcmp(campo, "codEstacaoIntegra") == 0) r->codEstIntegra = valorInt;
+    
     else if (strcmp(campo, "nomeEstacao") == 0) {
         if (isNulo) {
             r->tamNomeEstacao = 0;

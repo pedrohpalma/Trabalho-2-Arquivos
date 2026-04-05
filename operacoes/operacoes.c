@@ -437,10 +437,11 @@ void funcionalidade_6(char *arqBin, int n) {
     fread(&c.nroEstacoes, 4, 1, bin);
     fread(&c.nroParesEstacao, 4, 1, bin);
 
-    // Marca como inconsistente
+    // Marca como inconsistente e FORÇA a gravação no disco
     c.status = '0';
     fseek(bin, 0, SEEK_SET);
     fwrite(&c.status, 1, 1, bin);
+    fflush(bin); 
 
     for (int i = 0; i < n; i++) {
         // LEITURA DOS CRITÉRIOS DE BUSCA (M)
@@ -451,9 +452,21 @@ void funcionalidade_6(char *arqBin, int n) {
 
         for (int j = 0; j < m; j++) {
             scanf("%s", camposBusca[j]);
-            ScanQuoteString(valoresStrBusca[j]);
-            isNuloBusca[j] = (strcmp(valoresStrBusca[j], "") == 0);
-            valoresIntBusca[j] = isNuloBusca[j] ? -1 : atoi(valoresStrBusca[j]);
+            if (strcmp(camposBusca[j], "nomeEstacao") == 0 || strcmp(camposBusca[j], "nomeLinha") == 0) {
+                ScanQuoteString(valoresStrBusca[j]);
+                isNuloBusca[j] = (strcmp(valoresStrBusca[j], "") == 0);
+                valoresIntBusca[j] = -1; 
+            } else {
+                char temp[50];
+                scanf("%s", temp);
+                if (strcmp(temp, "NULO") == 0) {
+                    isNuloBusca[j] = 1;
+                    valoresIntBusca[j] = -1;
+                } else {
+                    isNuloBusca[j] = 0;
+                    valoresIntBusca[j] = atoi(temp);
+                }
+            }
         }
 
         // LEITURA DOS VALORES DE ATUALIZAÇÃO (P)
@@ -464,18 +477,30 @@ void funcionalidade_6(char *arqBin, int n) {
 
         for (int j = 0; j < p; j++) {
             scanf("%s", camposAtualiza[j]);
-            ScanQuoteString(valoresStrAtualiza[j]);
-            isNuloAtualiza[j] = (strcmp(valoresStrAtualiza[j], "") == 0);
-            valoresIntAtualiza[j] = isNuloAtualiza[j] ? -1 : atoi(valoresStrAtualiza[j]);
+            if (strcmp(camposAtualiza[j], "nomeEstacao") == 0 || strcmp(camposAtualiza[j], "nomeLinha") == 0) {
+                ScanQuoteString(valoresStrAtualiza[j]);
+                isNuloAtualiza[j] = (strcmp(valoresStrAtualiza[j], "") == 0);
+                valoresIntAtualiza[j] = -1;
+            } else {
+                char temp[50];
+                scanf("%s", temp);
+                if (strcmp(temp, "NULO") == 0) {
+                    isNuloAtualiza[j] = 1;
+                    valoresIntAtualiza[j] = -1;
+                } else {
+                    isNuloAtualiza[j] = 0;
+                    valoresIntAtualiza[j] = atoi(temp);
+                }
+            }
         }
 
-        // Vai para o primeiro registro de dados (byte 17) para iniciar a varredura
+        // CORREÇÃO DE LOOP MÚLTIPLO: Rewind força a limpeza da flag de EOF antes do fseek
+        rewind(bin);
         fseek(bin, 17, SEEK_SET);
 
         Registro r;
         int status_leitura;
         while ((status_leitura = le_registro_bin(bin, &r)) != 0) {
-            // Ignora registros deletados
             if (status_leitura == 2) continue;
 
             int match = 1;
@@ -487,25 +512,26 @@ void funcionalidade_6(char *arqBin, int n) {
             }
 
             if (match) {
-                // Atualiza em memória
                 for (int j = 0; j < p; j++) {
                     atualiza_campo(&r, camposAtualiza[j], valoresStrAtualiza[j], valoresIntAtualiza[j], isNuloAtualiza[j]);
                 }
 
-                // Volta o ponteiro 80 bytes para sobrescrever o próprio registro lido
                 fseek(bin, -80, SEEK_CUR);
-                
-                // Sobrescreve: escreve_registro_bin já cuida do tamanho e completa com cifrões ('$')
                 escreve_registro_bin(bin, &r);
                 
-                // O fwrite dentro da escreve_registro_bin naturalmente move o ponteiro os 80 bytes pra frente,
-                // deixando-o na posição perfeita para a próxima iteração do while!
+                // Força o sistema a efetivar o fwrite antes do próximo fread
+                fflush(bin); 
+                // Reposicionamento seguro para a próxima iteração
+                fseek(bin, 0, SEEK_CUR); 
             }
         }
     }
 
     // Finaliza as atualizações e restaura consistência ('1')
     atualiza_cabecalho(bin, &c);
+    
+    // Garante que o buffer final foi despejado
+    fflush(bin); 
     fechar_arquivo(bin);
 
     // Avaliação

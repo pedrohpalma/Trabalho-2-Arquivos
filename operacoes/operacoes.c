@@ -216,10 +216,9 @@ void funcionalidade_3(char *arqBin, int n) {
             printf("Registro inexistente.\n");
         }
 
-        // Imprime uma quebra de linha extra para separar as buscas, exceto após a última busca.
-        if (i < n - 1) {
-            printf("\n");
-        }
+        // Imprime uma quebra de linha extra para separar as buscas
+        printf("\n");
+
     }
 
     fechar_arquivo(bin);
@@ -227,7 +226,6 @@ void funcionalidade_3(char *arqBin, int n) {
 
 // Função 'Delete From' com múltiplos critérios de busca e marcação lógica de remoção
 void funcionalidade_4(char *arqBin, int n) {
-    // Abre em "r+b" para permitir leitura e alteração no mesmo arquivo
     FILE *bin = abrir_arquivo(arqBin, "r+b");
     if (!bin) {
         printf("Falha no processamento do arquivo.\n");
@@ -235,7 +233,6 @@ void funcionalidade_4(char *arqBin, int n) {
     }
 
     Cabecalho c;
-    // Verifica a consistência do arquivo e lê o cabeçalho
     if (!le_cabecalho(bin, &c)) {
         printf("Falha no processamento do arquivo.\n");
         fechar_arquivo(bin);
@@ -277,16 +274,13 @@ void funcionalidade_4(char *arqBin, int n) {
         }
 
         fseek(bin, 17, SEEK_SET); 
-        
         Registro r;
         int status_leitura;
-        
-        // Guarda a posição exata onde o registro que vamos ler começa
-        long offset_atual = ftell(bin); 
+        int rrn_atual = 0; 
 
         while ((status_leitura = le_registro_bin(bin, &r)) != 0) {
             if (status_leitura == 2) {
-                offset_atual = ftell(bin);
+                rrn_atual++;
                 continue; 
             }
 
@@ -300,35 +294,74 @@ void funcionalidade_4(char *arqBin, int n) {
             }
 
             if (match) {
-                // Calcula o RRN correto
-                int rrn_atual = (int)((offset_atual - 17) / 80);
+                long offset_atual = 17 + (rrn_atual * 80);
 
                 r.removido = '1';
                 r.proximo = c.topo; 
-                c.topo = rrn_atual; // Atualiza o topo com o RRN
-                c.nroEstacoes--;
+                c.topo = rrn_atual;
 
                 fseek(bin, offset_atual, SEEK_SET);
                 fwrite(&r.removido, 1, 1, bin);
-                fwrite(&r.proximo, 4, 1, bin); // Grava o próximo como RRN
+                fwrite(&r.proximo, 4, 1, bin); 
                 
                 fseek(bin, offset_atual + 80, SEEK_SET);
             }
             
-            // Atualiza o offset para o início do próximo registro
-            offset_atual = ftell(bin); 
+            rrn_atual++; 
         }
     }
 
-    // Depois das deleções, atualizamos o cabeçalho no arquivo para atualizar o status para '1' e o novo valor de topo
+    // Varredura para contagem de estações únicas e pares únicos remanescentes para o cabeçalho após as deleções
+    c.nroEstacoes = 0;
+    c.nroParesEstacao = 0;
+    char estacoes_unicas[2000][100];
+    int pares_unicos[2000][2];
+
+    fseek(bin, 17, SEEK_SET);
+    Registro reg;
+    int status_leitura_recontagem;
+    
+    while ((status_leitura_recontagem = le_registro_bin(bin, &reg)) != 0) {
+        if (status_leitura_recontagem == 2) continue; // Pula os que acabamos de remover
+
+        // Checagem de Estação Única
+        int estacao_existe = 0;
+        for (int k = 0; k < c.nroEstacoes; k++) {
+            if (strcmp(estacoes_unicas[k], reg.nomeEstacao) == 0) {
+                estacao_existe = 1;
+                break;
+            }
+        }
+        if (!estacao_existe) {
+            strcpy(estacoes_unicas[c.nroEstacoes], reg.nomeEstacao);
+            c.nroEstacoes++;
+        }
+
+        // Checagem de Par Único
+        if (reg.codProxEstacao != -1) {
+            int par_existe = 0;
+            for (int k = 0; k < c.nroParesEstacao; k++) {
+                if (pares_unicos[k][0] == reg.codEstacao && pares_unicos[k][1] == reg.codProxEstacao) {
+                    par_existe = 1;
+                    break;
+                }
+            }
+            if (!par_existe) {
+                pares_unicos[c.nroParesEstacao][0] = reg.codEstacao;
+                pares_unicos[c.nroParesEstacao][1] = reg.codProxEstacao;
+                c.nroParesEstacao++;
+            }
+        }
+    }
+
     atualiza_cabecalho(bin, &c);
     fechar_arquivo(bin);
 
     BinarioNaTela(arqBin);
 }
 
+
 void funcionalidade_5(char *arqBin, int n) {
-    // Abrir o arquivo binário no modo leitura e escrita ("rb+")
     FILE *bin = abrir_arquivo(arqBin, "rb+");
     if (!bin) {
         printf("Falha no processamento do arquivo.\n");
@@ -336,7 +369,6 @@ void funcionalidade_5(char *arqBin, int n) {
     }
 
     Cabecalho c;
-    // Verifica a consistência do arquivo e lê o cabeçalho
     if (!le_cabecalho(bin, &c)) {
         printf("Falha no processamento do arquivo.\n");
         fechar_arquivo(bin);
@@ -347,43 +379,76 @@ void funcionalidade_5(char *arqBin, int n) {
     c.status = '0';
     fseek(bin, 0, SEEK_SET);
     fwrite(&c.status, 1, 1, bin);
+    fflush(bin); 
 
     for (int i = 0; i < n; i++) {
         Registro r;
-        le_registro_teclado(&r); // Usa nossa função modular para processar a linha
+        le_registro_teclado(&r); 
 
         // VERIFICAÇÃO DE REUSO DE ESPAÇO:
         if (c.topo != -1) { 
-            // Reaproveitamento da pilha de registros removidos
             int rrn_reuso = c.topo;
             long offset = 17 + (rrn_reuso * 80);
 
-            // Descobre quem é o próximo removido para atualizar o topo do cabeçalho
             int proximo_removido;
-            fseek(bin, offset + 1, SEEK_SET); // Pula 1 byte do char 'removido'
+            fseek(bin, offset + 1, SEEK_SET); 
             fread(&proximo_removido, 4, 1, bin);
 
-            // Atualiza o topo do arquivo e sobrescreve o registro na posição reutilizada
             c.topo = proximo_removido;
             fseek(bin, offset, SEEK_SET);
-            escreve_registro_bin(bin, &r); // Reaproveita a escrita modular
+            escreve_registro_bin(bin, &r); 
         } else {
-            // Inserção no final do arquivo caso não existam removidos
             long offset = 17 + (c.proxRRN * 80);
             fseek(bin, offset, SEEK_SET);
-            escreve_registro_bin(bin, &r); // Reaproveita a escrita modular
+            escreve_registro_bin(bin, &r); 
             c.proxRRN++;
         }
-
-        // CORREÇÃO: Incrementando o número de pares de estação a cada inserção!
-        c.nroParesEstacao++;
     }
 
-    // Nota de PDF: Em Inserções, "nroEstacoes" não deve ser alterado (já mantido intacto)
+    // Varredura para contagem de estações únicas e pares únicos remanescentes para o cabeçalho após as inserções
+    c.nroEstacoes = 0;
+    c.nroParesEstacao = 0;
+    char estacoes_unicas[2000][100];
+    int pares_unicos[2000][2];
 
-    // A função atualiza_cabecalho já muda o status para '1' e reescreve os dados atualizados!
-    atualiza_cabecalho(bin, &c);
+    fseek(bin, 17, SEEK_SET);
+    Registro reg;
+    int status_leitura_recontagem;
     
+    while ((status_leitura_recontagem = le_registro_bin(bin, &reg)) != 0) {
+        if (status_leitura_recontagem == 2) continue; 
+
+        int estacao_existe = 0;
+        for (int k = 0; k < c.nroEstacoes; k++) {
+            if (strcmp(estacoes_unicas[k], reg.nomeEstacao) == 0) {
+                estacao_existe = 1;
+                break;
+            }
+        }
+        if (!estacao_existe) {
+            strcpy(estacoes_unicas[c.nroEstacoes], reg.nomeEstacao);
+            c.nroEstacoes++;
+        }
+
+        if (reg.codProxEstacao != -1) {
+            int par_existe = 0;
+            for (int k = 0; k < c.nroParesEstacao; k++) {
+                if (pares_unicos[k][0] == reg.codEstacao && pares_unicos[k][1] == reg.codProxEstacao) {
+                    par_existe = 1;
+                    break;
+                }
+            }
+            if (!par_existe) {
+                pares_unicos[c.nroParesEstacao][0] = reg.codEstacao;
+                pares_unicos[c.nroParesEstacao][1] = reg.codProxEstacao;
+                c.nroParesEstacao++;
+            }
+        }
+    }
+
+    clearerr(bin);
+    atualiza_cabecalho(bin, &c);
+    fflush(bin);
     fechar_arquivo(bin);
 
     BinarioNaTela(arqBin);

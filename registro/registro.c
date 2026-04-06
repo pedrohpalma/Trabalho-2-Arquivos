@@ -188,35 +188,54 @@ int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int 
 }
 
 
-// Lê dados do terminal e constrói o Registro (reaproveitando o ScanQuoteString fornecido)
+// Lê dados do terminal e constrói o Registro
 void le_registro_teclado(Registro *r) {
     char buffer[256];
 
-    ScanQuoteString(buffer);
-    r->codEstacao = (buffer[0] == '\0') ? -1 : atoi(buffer);
+    // 1. codEstacao (int)
+    scanf("%s", buffer);
+    r->codEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
+    // 2. nomeEstacao (string)
     ScanQuoteString(buffer);
-    r->tamNomeEstacao = strlen(buffer);
-    strcpy(r->nomeEstacao, buffer);
+    if (strcmp(buffer, "") == 0 || strcmp(buffer, "NULO") == 0) {
+        r->tamNomeEstacao = 0;
+        r->nomeEstacao[0] = '\0';
+    } else {
+        r->tamNomeEstacao = strlen(buffer);
+        strcpy(r->nomeEstacao, buffer);
+    }
 
-    ScanQuoteString(buffer);
-    r->codLinha = (buffer[0] == '\0') ? -1 : atoi(buffer);
+    // 3. codLinha (int)
+    scanf("%s", buffer);
+    r->codLinha = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
+    // 4. nomeLinha (string)
     ScanQuoteString(buffer);
-    r->tamNomeLinha = strlen(buffer);
-    strcpy(r->nomeLinha, buffer);
+    if (strcmp(buffer, "") == 0 || strcmp(buffer, "NULO") == 0) {
+        r->tamNomeLinha = 0;
+        r->nomeLinha[0] = '\0';
+    } else {
+        r->tamNomeLinha = strlen(buffer);
+        strcpy(r->nomeLinha, buffer);
+    }
 
-    ScanQuoteString(buffer);
-    r->codProxEstacao = (buffer[0] == '\0') ? -1 : atoi(buffer);
+    // 5. codProxEstacao (int)
+    scanf("%s", buffer);
+    r->codProxEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    ScanQuoteString(buffer);
-    r->distProxEstacao = (buffer[0] == '\0') ? -1 : atoi(buffer);
+    // 6. distProxEstacao (int)
+    scanf("%s", buffer);
+    r->distProxEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    ScanQuoteString(buffer);
-    r->codLinhaIntegra = (buffer[0] == '\0') ? -1 : atoi(buffer);
+    // 7. codLinhaIntegra (int)
+    scanf("%s", buffer);
+    r->codLinhaIntegra = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    ScanQuoteString(buffer);
-    r->codEstIntegra = (buffer[0] == '\0') ? -1 : atoi(buffer);
+    // 8. codEstIntegra (int)
+    scanf("%s", buffer);
+    r->codEstIntegra = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
+    
 
     // Campos de controle lógicos para um novo registro
     r->removido = '0';

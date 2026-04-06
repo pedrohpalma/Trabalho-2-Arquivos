@@ -254,10 +254,8 @@ void autualizaCampo(Registro *r, char *campo, char *valorStr, int valorInt, int 
     else if (strcmp(campo, "codProxEstacao") == 0) r->codProxEstacao = valorInt;
     else if (strcmp(campo, "distProxEstacao") == 0) r->distProxEstacao = valorInt;
     
-    // Suporte para eventuais erros de digitação do PDF
     else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) r->codLinhaIntegra = valorInt;
     
-    // CORREÇÃO: Aceita a variação do nome do campo usada nos casos de teste
     else if (strcmp(campo, "codEstIntegra") == 0 || strcmp(campo, "codEstacaoIntegra") == 0) r->codEstIntegra = valorInt;
     
     else if (strcmp(campo, "nomeEstacao") == 0) {

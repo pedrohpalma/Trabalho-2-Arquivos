@@ -1,12 +1,11 @@
 //Pedro Hamamoto da Palma - 16818280
 //Mateus Juares Felipe - 16891602
-
+//Turma de segunda feira
 
 
 
 #include <stdio.h>
 #include "operacoes/operacoes.h"
-
 
 int main() {
     int operacao;

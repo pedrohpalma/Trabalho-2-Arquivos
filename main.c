@@ -1,5 +1,12 @@
+//Pedro Hamamoto da Palma - 16818280
+//Mateus Juares Felipe - 16891602
+
+
+
+
 #include <stdio.h>
 #include "operacoes/operacoes.h"
+
 
 int main() {
     int operacao;

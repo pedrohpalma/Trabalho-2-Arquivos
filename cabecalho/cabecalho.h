@@ -2,6 +2,8 @@
 #define CABECALHO_H
 #include <stdio.h>
 
+#define TAM_CABECALHO 17
+
 typedef struct {
     char status;           // '0' inconsistente, '1' consistente
     int topo;              // Byte offset de registro logicamente removido (-1 inicial)
@@ -10,9 +12,10 @@ typedef struct {
     int nroParesEstacao;   // Qtd de pares únicos (codEstacao, codProxEstacao)
 } Cabecalho;
 
-void inicializa_cabecalho(Cabecalho *c);
-void escreve_cabecalho(FILE *bin, Cabecalho *c);
-void atualiza_cabecalho(FILE *bin, Cabecalho *c);
-int le_cabecalho(FILE *bin, Cabecalho *c);
+void initCabecalho(Cabecalho *c);
+void escreveCabecalho(FILE *bin, Cabecalho *c);
+void atualizaCabecalho(FILE *bin, Cabecalho *c);
+int leCabecalho(FILE *bin, Cabecalho *c);
+void atualizaContagemEstacoes(FILE *bin, Cabecalho *c);
 
 #endif

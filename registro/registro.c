@@ -3,25 +3,25 @@
 #include "registro.h"
 #include "../utilitarios/utils.h"
 
-void parse_linha_csv(char *linha, Registro *r) {
+void lerRegistroCSV(char *linha, Registro *r) {
     char *ptr = linha;
     char campo[256];
 
     // 1. codEstacao (não aceita nulo)
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     r->codEstacao = atoi(campo);
 
     // 2. nomeEstacao (não aceita nulo)
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     r->tamNomeEstacao = strlen(campo);
     strcpy(r->nomeEstacao, campo);
 
     // 3. codLinha
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     r->codLinha = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
     // 4. nomeLinha
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
         r->tamNomeLinha = 0;
         r->nomeLinha[0] = '\0';
@@ -31,19 +31,19 @@ void parse_linha_csv(char *linha, Registro *r) {
     }
 
     // 5. codProxEstacao
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     r->codProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
     // 6. distProxEstacao
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     r->distProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
     // 7. codLinhaIntegra
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     r->codLinhaIntegra = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
     // 8. codEstIntegra (O último campo, que costuma trazer o "Enter" escondido)
-    get_next_field(&ptr, campo);
+    getProxCampo(&ptr, campo);
     if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
         r->codEstIntegra = -1;
     } else {
@@ -55,7 +55,7 @@ void parse_linha_csv(char *linha, Registro *r) {
     r->proximo = -1;
 }
 
-void escreve_registro_bin(FILE *bin, Registro *r) {
+void escreveRegistroBin(FILE *bin, Registro *r) {
     fwrite(&r->removido, 1, 1, bin);
     fwrite(&r->proximo, 4, 1, bin);
     fwrite(&r->codEstacao, 4, 1, bin);
@@ -87,7 +87,7 @@ void escreve_registro_bin(FILE *bin, Registro *r) {
 }
 
 // Lê exatamente 80 bytes do binário e decodifica para a struct Registro
-int le_registro_bin(FILE *bin, Registro *r) {
+int leRegistroBin(FILE *bin, Registro *r) {
     // Lê APENAS o campo 'removido' (1 byte)
     if (fread(&r->removido, 1, 1, bin) != 1) {
         return 0; // Retorna 0 quando chega no Fim do Arquivo (EOF)
@@ -132,7 +132,7 @@ int le_registro_bin(FILE *bin, Registro *r) {
     return 1; // Retorna 1 indicando sucesso na leitura
 }
 
-void imprime_registro(Registro *r) {
+void imprimeRegistro(Registro *r) {
     printf("%d ", r->codEstacao);
     
     if (r->tamNomeEstacao > 0) printf("%s ", r->nomeEstacao);
@@ -157,7 +157,7 @@ void imprime_registro(Registro *r) {
     else printf("%d\n", r->codEstIntegra);
 }
 
-int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
+int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
     if (strcmp(campo, "codEstacao") == 0) {
         return isNulo ? (r->codEstacao == -1) : (r->codEstacao == valorInt);
     } 
@@ -189,7 +189,7 @@ int atende_criterio(Registro *r, char *campo, char *valorStr, int valorInt, int 
 
 
 // Lê dados do terminal e constrói o Registro
-void le_registro_teclado(Registro *r) {
+void leRegistroTeclado(Registro *r) {
     char buffer[256];
 
     // 1. codEstacao (int)
@@ -243,7 +243,7 @@ void le_registro_teclado(Registro *r) {
 }
 
 // Atualiza um campo específico do registro com o novo valor
-void atualiza_campo(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
+void autualizaCampo(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
     if (strcmp(campo, "codEstacao") == 0) r->codEstacao = valorInt;
     else if (strcmp(campo, "codLinha") == 0) r->codLinha = valorInt;
     else if (strcmp(campo, "codProxEstacao") == 0) r->codProxEstacao = valorInt;

@@ -5,7 +5,7 @@
 #include "utils.h"
 
 // Extrai o próximo campo do CSV, avançando o ponteiro da linha
-void get_next_field(char **line_ptr, char *field) {
+void getProxCampo(char **line_ptr, char *field) {
     char *p = *line_ptr;
     int i = 0;
     // Lê até encontrar uma vírgula ou quebra de linha

@@ -19,37 +19,37 @@ int main() {
         case 1:
             // Funcionalidade 1: CSV -> Binário
             scanf("%s %s", arqEntrada, arqSaida);
-            funcionalidade_1(arqEntrada, arqSaida);
+            func1(arqEntrada, arqSaida);
             break;
 
         case 2:
             // Funcionalidade 2: Select *
             scanf("%s", arqBin);
-            funcionalidade_2(arqBin);
+            func2(arqBin);
             break;
 
         case 3:
             // Funcionalidade 3: Select com múltiplos critérios
             scanf("%s %d", arqBin, &n);
-            funcionalidade_3(arqBin, n);
+            func3(arqBin, n);
             break;
 
         case 4:
             // Funcionalidade 4: Remoção lógica com múltiplos critérios
             scanf("%s %d", arqBin, &n);
-            funcionalidade_4(arqBin, n);
+            func4(arqBin, n);
             break;
 
         case 5:
             // Funcionalidade 5: Insert
             scanf("%s %d", arqBin, &n);
-            funcionalidade_5(arqBin, n);
+            func5(arqBin, n);
             break;
 
         case 6:
             // Funcionalidade 6: Update in-place
             scanf("%s %d", arqBin, &n);
-            funcionalidade_6(arqBin, n);
+            func6(arqBin, n);
             break;
 
         default:

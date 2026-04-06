@@ -3,6 +3,6 @@
 
 void BinarioNaTela(char *arquivo);
 void ScanQuoteString(char *str);
-void get_next_field(char **line_ptr, char *field);
+void getProxCampo(char **line_ptr, char *field);
 
 #endif

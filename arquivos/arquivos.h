@@ -2,7 +2,7 @@
 #define ARQUIVO_H
 #include <stdio.h>
 
-FILE* abrir_arquivo(char *nome, char *modo);
-void fechar_arquivo(FILE *arq);
+FILE* abrirArquivo(char *nome, char *modo);
+void fecharArquivo(FILE *arq);
 
 #endif

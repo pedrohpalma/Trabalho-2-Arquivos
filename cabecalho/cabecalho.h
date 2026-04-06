@@ -13,5 +13,6 @@ typedef struct {
 void inicializa_cabecalho(Cabecalho *c);
 void escreve_cabecalho(FILE *bin, Cabecalho *c);
 void atualiza_cabecalho(FILE *bin, Cabecalho *c);
+int le_cabecalho(FILE *bin, Cabecalho *c);
 
 #endif

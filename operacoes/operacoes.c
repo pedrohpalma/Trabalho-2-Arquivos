@@ -71,8 +71,7 @@ void funcionalidade_1(char *arqEntrada, char *arqSaida) {
         c.proxRRN++;
     }
 
-    // Gambiarra pra corrigir o fato de que a contagem de estações únicas foi incrementada uma vez a mais do que o necessário
-    c.nroEstacoes--;
+
 
     // Atualiza cabeçalho com o status de sucesso '1' e os números finais 
     atualiza_cabecalho(bin, &c);
@@ -93,25 +92,13 @@ void funcionalidade_2(char *arqBin) {
     }
 
     Cabecalho c;
-    // Lê o status primeiro
-    if (fread(&c.status, 1, 1, bin) != 1) {
-        printf("Falha no processamento do arquivo.\n");
-        fechar_arquivo(bin);
-        return;
-    }
     
-    // Se o status for '0', o arquivo está inconsistente
-    if (c.status == '0') {
-        printf("Falha no processamento do arquivo.\n");
-        fechar_arquivo(bin);
-        return;
-    }
-    
-    // Lê o restante do cabeçalho
-    fread(&c.topo, 4, 1, bin);
-    fread(&c.proxRRN, 4, 1, bin);
-    fread(&c.nroEstacoes, 4, 1, bin);
-    fread(&c.nroParesEstacao, 4, 1, bin);
+    // Verifica a consistência do arquivo e lê o cabeçalho
+    if (!le_cabecalho(bin, &c)) {
+            printf("Falha no processamento do arquivo.\n");
+            fechar_arquivo(bin);
+            return;
+        }
     
     // Se não houver registros inseridos
     if (c.proxRRN == 0) {
@@ -150,18 +137,13 @@ void funcionalidade_3(char *arqBin, int n) {
     }
 
     Cabecalho c;
-    // Lê o status primeiro
-    if (fread(&c.status, 1, 1, bin) != 1 || c.status == '0') {
-        printf("Falha no processamento do arquivo.\n");
-        fechar_arquivo(bin);
-        return;
-    }
-    
-    // Lê o restante do cabeçalho
-    fread(&c.topo, 4, 1, bin);
-    fread(&c.proxRRN, 4, 1, bin);
-    fread(&c.nroEstacoes, 4, 1, bin);
-    fread(&c.nroParesEstacao, 4, 1, bin);
+
+    // Verifica a consistência do arquivo e lê o cabeçalho
+    if (!le_cabecalho(bin, &c)) {
+            printf("Falha no processamento do arquivo.\n");
+            fechar_arquivo(bin);
+            return;
+        }
 
     // Executa as buscas conforme os critérios fornecidos pelo usuario
     for (int i = 0; i < n; i++) {
@@ -253,7 +235,8 @@ void funcionalidade_4(char *arqBin, int n) {
     }
 
     Cabecalho c;
-    if (fread(&c.status, 1, 1, bin) != 1 || c.status == '0') {
+    // Verifica a consistência do arquivo e lê o cabeçalho
+    if (!le_cabecalho(bin, &c)) {
         printf("Falha no processamento do arquivo.\n");
         fechar_arquivo(bin);
         return;
@@ -263,12 +246,6 @@ void funcionalidade_4(char *arqBin, int n) {
     c.status = '0';
     fseek(bin, 0, SEEK_SET);
     fwrite(&c.status, 1, 1, bin);
-    
-    // Lê o restante do cabeçalho para ter o valor de c.topo
-    fread(&c.topo, 4, 1, bin);
-    fread(&c.proxRRN, 4, 1, bin);
-    fread(&c.nroEstacoes, 4, 1, bin);
-    fread(&c.nroParesEstacao, 4, 1, bin);
 
     // Loop para as 'n' deleções
     for (int i = 0; i < n; i++) {
@@ -359,18 +336,12 @@ void funcionalidade_5(char *arqBin, int n) {
     }
 
     Cabecalho c;
-    // Verifica a consistência do arquivo lendo o status
-    if (fread(&c.status, 1, 1, bin) != 1 || c.status == '0') {
+    // Verifica a consistência do arquivo e lê o cabeçalho
+    if (!le_cabecalho(bin, &c)) {
         printf("Falha no processamento do arquivo.\n");
         fechar_arquivo(bin);
         return;
     }
-
-    // Lê os demais dados do cabeçalho
-    fread(&c.topo, 4, 1, bin);
-    fread(&c.proxRRN, 4, 1, bin);
-    fread(&c.nroEstacoes, 4, 1, bin);
-    fread(&c.nroParesEstacao, 4, 1, bin);
 
     // Muda o status para inconsistente (0) enquanto está processando inserções
     c.status = '0';
@@ -426,16 +397,12 @@ void funcionalidade_6(char *arqBin, int n) {
     }
 
     Cabecalho c;
-    if (fread(&c.status, 1, 1, bin) != 1 || c.status == '0') {
+    // Verifica a consistência do arquivo e lê o cabeçalho
+    if (!le_cabecalho(bin, &c)) {
         printf("Falha no processamento do arquivo.\n");
         fechar_arquivo(bin);
         return;
     }
-
-    fread(&c.topo, 4, 1, bin);
-    fread(&c.proxRRN, 4, 1, bin);
-    fread(&c.nroEstacoes, 4, 1, bin);
-    fread(&c.nroParesEstacao, 4, 1, bin);
 
     // Marca como inconsistente e FORÇA a gravação no disco
     c.status = '0';

@@ -3,6 +3,8 @@
 #include "registro.h"
 #include "../utilitarios/utils.h"
 
+
+//le registros do csv e salva em struct registro
 void lerRegistroCSV(char *linha, Registro *r) {
     char *ptr = linha;
     char campo[256];
@@ -50,11 +52,11 @@ void lerRegistroCSV(char *linha, Registro *r) {
         r->codEstIntegra = atoi(campo);
     }
 
-    // Campos de controle
     r->removido = '0';
     r->proximo = -1;
 }
 
+//escreve um registro salvo em struct para o arquivo binário
 void escreveRegistroBin(FILE *bin, Registro *r) {
     fwrite(&r->removido, 1, 1, bin);
     fwrite(&r->proximo, 4, 1, bin);
@@ -65,7 +67,7 @@ void escreveRegistroBin(FILE *bin, Registro *r) {
     fwrite(&r->codLinhaIntegra, 4, 1, bin);
     fwrite(&r->codEstIntegra, 4, 1, bin);
     
-    // Campos variáveis
+    // trata campos de tamanho variavel
     fwrite(&r->tamNomeEstacao, 4, 1, bin);
     if (r->tamNomeEstacao > 0) {
         fwrite(r->nomeEstacao, 1, r->tamNomeEstacao, bin);
@@ -76,7 +78,8 @@ void escreveRegistroBin(FILE *bin, Registro *r) {
         fwrite(r->nomeLinha, 1, r->tamNomeLinha, bin);
     }
 
-    // Calcula lixo (tamanho máximo 80 bytes)
+
+    //calculo de lixo: calcula quanto falta para chegar nos 80 bytes e preenche a quantidade que falta com '$'
     int bytes_escritos = 37 + r->tamNomeEstacao + r->tamNomeLinha;
     int lixo = 80 - bytes_escritos;
     char cifrao = '$';
@@ -86,20 +89,20 @@ void escreveRegistroBin(FILE *bin, Registro *r) {
     }
 }
 
-// Lê exatamente 80 bytes do binário e decodifica para a struct Registro
+// Le exatamente 80 bytes do binário e decodifica para a struct Registro
 int leRegistroBin(FILE *bin, Registro *r) {
-    // Lê APENAS o campo 'removido' (1 byte)
+    // Le o campo 'removido' (1 byte)
     if (fread(&r->removido, 1, 1, bin) != 1) {
         return 0; // Retorna 0 quando chega no Fim do Arquivo (EOF)
     }
     
-    // REGRA DO PROFESSOR: Pular registros removidos com fseek
+    //Pula registros removidos com fseek
     if (r->removido == '1') {
         fseek(bin, 79, SEEK_CUR); // Pula os 79 bytes restantes deste registro
-        return 2; // Retorna o código 2 indicando "Registro Pulado"
+        return 2; //Codigo 2 indica que o registro foi pulado
     }
     
-    // Se não está removido, lê os 79 bytes restantes
+    // Se nao removido, le os 79 bytes restantes
     char buffer[79];
     fread(buffer, 1, 79, bin);
     
@@ -114,7 +117,7 @@ int leRegistroBin(FILE *bin, Registro *r) {
     memcpy(&r->codLinhaIntegra, &buffer[pos], 4); pos += 4;
     memcpy(&r->codEstIntegra, &buffer[pos], 4); pos += 4;
     
-    // Lendo campo variável: Nome da Estação
+    // Le os campos de tamanho variável, lendo primeiro o tamanho
     memcpy(&r->tamNomeEstacao, &buffer[pos], 4); pos += 4;
     if (r->tamNomeEstacao > 0) {
         memcpy(r->nomeEstacao, &buffer[pos], r->tamNomeEstacao);
@@ -122,7 +125,6 @@ int leRegistroBin(FILE *bin, Registro *r) {
     r->nomeEstacao[r->tamNomeEstacao] = '\0';
     pos += r->tamNomeEstacao;
     
-    // Lendo campo variável: Nome da Linha
     memcpy(&r->tamNomeLinha, &buffer[pos], 4); pos += 4;
     if (r->tamNomeLinha > 0) {
         memcpy(r->nomeLinha, &buffer[pos], r->tamNomeLinha);
@@ -132,6 +134,7 @@ int leRegistroBin(FILE *bin, Registro *r) {
     return 1; // Retorna 1 indicando sucesso na leitura
 }
 
+//imprime um registro na tela, lidando com registros vazios
 void imprimeRegistro(Registro *r) {
     printf("%d ", r->codEstacao);
     
@@ -157,6 +160,9 @@ void imprimeRegistro(Registro *r) {
     else printf("%d\n", r->codEstIntegra);
 }
 
+
+
+//identifica qual critério está sendo checado, e depois verifica se o registro bate com a busca
 int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
     if (strcmp(campo, "codEstacao") == 0) {
         return isNulo ? (r->codEstacao == -1) : (r->codEstacao == valorInt);
@@ -170,11 +176,9 @@ int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int i
     else if (strcmp(campo, "distProxEstacao") == 0) {
         return isNulo ? (r->distProxEstacao == -1) : (r->distProxEstacao == valorInt);
     }
-    // Suporte para eventuais erros de digitação do PDF (com 'l' no lugar do 'I' maiúsculo)
     else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) {
         return isNulo ? (r->codLinhaIntegra == -1) : (r->codLinhaIntegra == valorInt);
     }
-    // CORREÇÃO: Aceita a variação do nome do campo usada nos casos de teste
     else if (strcmp(campo, "codEstIntegra") == 0 || strcmp(campo, "codEstacaoIntegra") == 0) {
         return isNulo ? (r->codEstIntegra == -1) : (r->codEstIntegra == valorInt);
     }
@@ -188,7 +192,8 @@ int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int i
 }
 
 
-// Lê dados do terminal e constrói o Registro
+
+//lê entrada do usuário para novos registros 
 void leRegistroTeclado(Registro *r) {
     char buffer[256];
 

@@ -4,6 +4,10 @@
 
 #define TAM_REGISTRO 80
 
+//define as operações principais que são usadas várias vezes sobre os registros
+
+
+//struct com os campos definidos para o registro
 typedef struct {
     char removido;
     int proximo;

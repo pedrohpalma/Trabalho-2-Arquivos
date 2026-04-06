@@ -47,7 +47,7 @@ int main() {
             break;
 
         case 6:
-            // Funcionalidade 6: Update in-place
+            // Funcionalidade 6: Update
             scanf("%s %d", arqBin, &n);
             func6(arqBin, n);
             break;

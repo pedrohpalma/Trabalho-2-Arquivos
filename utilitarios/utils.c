@@ -4,20 +4,21 @@
 #include <ctype.h>
 #include "utils.h"
 
-// Extrai o próximo campo do CSV, avançando o ponteiro da linha
+// extrai o proximo campo do CSV avançando o ponteiro da linha. feito por conta de dificuldade em fazer strtok funcionar
 void getProxCampo(char **line_ptr, char *field) {
     char *p = *line_ptr;
     int i = 0;
-    // Lê até encontrar uma vírgula ou quebra de linha
+    // le ate nova linha ou virgula
     while (*p && *p != ',' && *p != '\n' && *p != '\r') {
         field[i++] = *p++;
     }
     field[i] = '\0';
     if (*p == ',') {
-        p++; // Pula o separador
+        p++; //pula o separador
     }
     *line_ptr = p;
 }
+
 
 void BinarioNaTela(char *arquivo) {
     FILE *fs;

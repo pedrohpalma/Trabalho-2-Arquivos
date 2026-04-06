@@ -2,6 +2,8 @@
 #include "cabecalho.h"
 #include "../registro/registro.h"
 
+
+//inicia o cabecalho zerado,
 void initCabecalho(Cabecalho *c) {
     c->status = '0'; // status inicial (0 = sendo escrito)
     c->topo = -1;    // topo igual a -1 para ausência de registros removidos
@@ -10,8 +12,9 @@ void initCabecalho(Cabecalho *c) {
     c->nroParesEstacao = 0;
 }
 
+
+//recebe as informações atualizadas do cabeçalho c e atualiza no arquivo
 void escreveCabecalho(FILE *bin, Cabecalho *c) {
-    // Escreve campo a campo de forma fixa sem padding extra, total = 17 bytes
     fwrite(&c->status, 1, 1, bin);
     fwrite(&c->topo, 4, 1, bin);
     fwrite(&c->proxRRN, 4, 1, bin);
@@ -19,23 +22,25 @@ void escreveCabecalho(FILE *bin, Cabecalho *c) {
     fwrite(&c->nroParesEstacao, 4, 1, bin);
 }
 
+//muda status do cabecalho quando termina escrita do sucesso
 void atualizaCabecalho(FILE *bin, Cabecalho *c) {
-    c->status = '1'; // Finalizou a escrita com sucesso
+    c->status = '1';
     fseek(bin, 0, SEEK_SET);
     escreveCabecalho(bin, c);
 }
 
+//salva info do cabeçalho em struct
 int leCabecalho(FILE *bin, Cabecalho *c) {
-    // Tenta ler o primeiro campo (status). Se não conseguir ler 1 byte, falhou
+    // tenta ler o primeiro campo (status). Se nao conseguir ler 1 byte, falhou
     if (fread(&c->status, 1, 1, bin) != 1) {
         return 0;
     }
-    // Se o status for '0', o arquivo está inconsistente e não deve ser processado 
+    // se o status for 0, o arquivo está inconsistente e não deve ser processado 
     if (c->status == '0') {
         return 0;
     }
 
-    // Lê o restante dos campos sequencialmente, campo a campo 
+    // Le o restante dos campos sequencialmente, campo a campo 
     fread(&c->topo, 4, 1, bin);
     fread(&c->proxRRN, 4, 1, bin);
     fread(&c->nroEstacoes, 4, 1, bin);
@@ -44,6 +49,8 @@ int leCabecalho(FILE *bin, Cabecalho *c) {
     return 1;
 }
 
+
+//percorre o arquivo novamente e atualiza o cabecalho quando existem modificaçoes, recontando o n de estacoes e n de pares
 void atualizaContagemEstacoes(FILE *bin, Cabecalho *c) {
     c->nroEstacoes = 0;
     c->nroParesEstacao = 0;

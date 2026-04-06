@@ -9,7 +9,7 @@
 
 
 
-// Funçao 'Create Table' que lê o .csv, converte para binário e escreve o cabeçalho
+// Funçao Create Table que le o .csv, converte para binário e escreve o cabeçalho
 void func1(char *arqEntrada, char *arqSaida) {
     FILE *csv = abrirArquivo(arqEntrada, "r");
     if (!csv) {
@@ -26,11 +26,10 @@ void func1(char *arqEntrada, char *arqSaida) {
 
     Cabecalho c;
     initCabecalho(&c);
-    escreveCabecalho(bin, &c);
+    escreveCabecalho(bin, &c); //inicia cabeçalho zerado
 
     char linha[1024];
-    // Ignorar cabeçalho do arquivo .csv
-    fgets(linha, sizeof(linha), csv);
+    fgets(linha, sizeof(linha), csv);// Ignorar cabeçalho do arquivo .csv
 
     // Arrays para validar unicidade (Tamanhos estimados para o cenário)
     char estacoes_unicas[2000][100];
@@ -75,13 +74,12 @@ void func1(char *arqEntrada, char *arqSaida) {
 
 
 
-    // Atualiza cabeçalho com o status de sucesso '1' e os números finais 
+    // atualiza cabeçalho com o status de sucesso '1' e os valores finais 
     atualizaCabecalho(bin, &c);
 
     fecharArquivo(csv);
     fecharArquivo(bin);
 
-    // Usa a funcionalidade exigida
     BinarioNaTela(arqSaida);
 }
 
@@ -117,8 +115,7 @@ void func2(char *arqBin) {
     
     // Itera pelos registros usando a nossa nova função de leitura
     while ((status_leitura = leRegistroBin(bin, &r)) != 0){
-        // Ignora os registros marcados como removidos logicamente ('1')
-        if (status_leitura == 2) continue;
+        if (status_leitura == 2) continue;// Ignora os registros marcados como removidos logicamente
         
         encontrados++;
         imprimeRegistro(&r);
@@ -165,7 +162,7 @@ void func3(char *arqBin, int n) {
         for (int j = 0; j < m; j++) {
             scanf("%s", campos[j]);
 
-            // Para campos variaveis (strings)
+            //para campos de tamanho variaveis (strings)
             if (strcmp(campos[j], "nomeEstacao") == 0 || strcmp(campos[j], "nomeLinha") == 0) {
                 ScanQuoteString(valoresStr[j]);
                 
@@ -175,7 +172,7 @@ void func3(char *arqBin, int n) {
                     isNulo[j] = 0;
                 }
             } 
-            // Para campos fixos (inteiros)
+            // Para campos com valores inteiros
             else {
                 char temp[30];
                 scanf("%s", temp);
@@ -195,14 +192,14 @@ void func3(char *arqBin, int n) {
         int status_leitura;
         int encontrados = 0;
 
-        // Loop de leitura sequencial usando a sua funçao
+        // Loop de leitura sequencial usando a funçao leRegistroBin
         while ((status_leitura = leRegistroBin(bin, &r)) != 0) {
 
-            if (status_leitura == 2) continue; 
+            if (status_leitura == 2) continue; //registro removido logicamente
 
             int match = 1;
 
-            // Testa o registro contra todos os 'm' critérios
+            // Testa o registro contra todos os m criterios
             for (int j = 0; j < m; j++) {
                 if (!atendeCriterio(&r, campos[j], valoresStr[j], valoresInt[j], isNulo[j])) {
                     match = 0;
@@ -210,7 +207,7 @@ void func3(char *arqBin, int n) {
                 }
             }
 
-            // Se for 1, significa que ele atendeu a todos os 'm' filtros e é valido
+            // Se for 1 significa que ele atendeu a todos os m filtros e é valido
             if (match) {
                 encontrados++;
                 imprimeRegistro(&r);
@@ -222,7 +219,6 @@ void func3(char *arqBin, int n) {
             printf("Registro inexistente.\n");
         }
 
-        // Imprime uma quebra de linha extra para separar as buscas
         printf("\n");
 
     }
@@ -232,7 +228,7 @@ void func3(char *arqBin, int n) {
 
 
 
-// Função 'Delete From' com múltiplos critérios de busca e marcação lógica de remoção
+// Função 'Delete From' com remoção lógica
 void func4(char *arqBin, int n) {
     FILE *bin = abrirArquivo(arqBin, "r+b");
     if (!bin) {
@@ -262,7 +258,8 @@ void func4(char *arqBin, int n) {
         int valoresInt[m];
         int isNulo[m];
 
-        // Lógica de leitura de critérios
+
+        //lógica de leitura dos critérios
         for (int j = 0; j < m; j++) {
             scanf("%s", campos[j]);
             if (strcmp(campos[j], "nomeEstacao") == 0 || strcmp(campos[j], "nomeLinha") == 0) {
@@ -302,12 +299,16 @@ void func4(char *arqBin, int n) {
             }
 
             if (match) {
-                long offset_atual = TAM_CABECALHO + (rrn_atual * TAM_REGISTRO);
+                long offset_atual = TAM_CABECALHO + (rrn_atual * TAM_REGISTRO); //acha o offset do registro a ser removido
 
+
+                //marca como removido e atualiza o topo da pilha
                 r.removido = '1';
                 r.proximo = c.topo; 
-                c.topo = rrn_atual;
+                c.topo = rrn_atual; 
 
+
+                //passa mudanças pro arquivo binario
                 fseek(bin, offset_atual, SEEK_SET);
                 fwrite(&r.removido, 1, 1, bin);
                 fwrite(&r.proximo, 4, 1, bin); 
@@ -319,7 +320,8 @@ void func4(char *arqBin, int n) {
         }
     }
 
-    // Varredura para contagem de estações únicas e pares únicos remanescentes para o cabeçalho após as deleções
+
+    //atualiza contagem de estacoes e pares de estacoes
     atualizaContagemEstacoes(bin, &c);
 
     atualizaCabecalho(bin, &c);
@@ -329,6 +331,8 @@ void func4(char *arqBin, int n) {
 }
 
 
+
+//Função Insert Into, permite a inserção de novos registros, sobrescrevendo registros removidos logicamente quando necessário
 void func5(char *arqBin, int n) {
     FILE *bin = abrirArquivo(arqBin, "rb+");
     if (!bin) {
@@ -343,38 +347,38 @@ void func5(char *arqBin, int n) {
         return;
     }
 
-    // Muda o status para inconsistente (0) enquanto está processando inserções
+    // Muda o status para inconsistente enquanto processa inserções
     c.status = '0';
     fseek(bin, 0, SEEK_SET);
     fwrite(&c.status, 1, 1, bin);
     fflush(bin); 
 
+    //loop das buscas 
     for (int i = 0; i < n; i++) {
         Registro r;
-        leRegistroTeclado(&r); 
+        leRegistroTeclado(&r); //le entrada do usuário para registro
 
-        // VERIFICAÇÃO DE REUSO DE ESPAÇO:
+        // verificação de reuso de espaço
         if (c.topo != -1) { 
             int rrn_reuso = c.topo;
-            long offset = TAM_CABECALHO + (rrn_reuso * TAM_REGISTRO);
+            long offset = TAM_CABECALHO + (rrn_reuso * TAM_REGISTRO); //ofset do prox registro logicamente removido
 
             int proximo_removido;
             fseek(bin, offset + 1, SEEK_SET); 
             fread(&proximo_removido, 4, 1, bin);
 
-            c.topo = proximo_removido;
+            c.topo = proximo_removido; //remove um removido da pilha
             fseek(bin, offset, SEEK_SET);
             escreveRegistroBin(bin, &r); 
         } else {
             long offset = TAM_CABECALHO + (c.proxRRN * TAM_REGISTRO);
             fseek(bin, offset, SEEK_SET);
-            escreveRegistroBin(bin, &r); 
+            escreveRegistroBin(bin, &r);  //escreve registro novo no offset determinado pela verificação
             c.proxRRN++;
         }
     }
 
-    // Varredura para contagem de estações únicas e pares únicos remanescentes para o cabeçalho após as inserções
-    atualizaContagemEstacoes(bin, &c);
+    atualizaContagemEstacoes(bin, &c); //atualiza contagem de estacoes e pares. PDF falava que nao precisava, mas no runcodes precisava
 
     atualizaCabecalho(bin, &c);
     fecharArquivo(bin);
@@ -382,6 +386,8 @@ void func5(char *arqBin, int n) {
     BinarioNaTela(arqBin);
 }
 
+
+//Função Update: atualiza registros conforme os campos especificados
 void func6(char *arqBin, int n) {
     FILE *bin = abrirArquivo(arqBin, "rb+");
     if (!bin) {
@@ -397,14 +403,12 @@ void func6(char *arqBin, int n) {
         return;
     }
 
-    // Marca como inconsistente e FORÇA a gravação no disco
-    c.status = '0';
+    c.status = '0'; //atualiza consistencia do cabeçalho
     fseek(bin, 0, SEEK_SET);
     fwrite(&c.status, 1, 1, bin);
     fflush(bin); 
 
-    for (int i = 0; i < n; i++) {
-        // LEITURA DOS CRITÉRIOS DE BUSCA (M)
+    for (int i = 0; i < n; i++) { //leitura dos critérios de busca
         int m;
         scanf("%d", &m);
         char camposBusca[m][50], valoresStrBusca[m][100];
@@ -429,7 +433,8 @@ void func6(char *arqBin, int n) {
             }
         }
 
-        // LEITURA DOS VALORES DE ATUALIZAÇÃO (P)
+
+        //leitura dos critérios de atualização
         int p;
         scanf("%d", &p);
         char camposAtualiza[p][50], valoresStrAtualiza[p][100];
@@ -454,7 +459,7 @@ void func6(char *arqBin, int n) {
             }
         }
 
-        // CORREÇÃO DE LOOP MÚLTIPLO: Rewind força a limpeza da flag de EOF antes do fseek
+        //Rewind força a limpeza da flag de EOF antes do fseek
         rewind(bin);
         fseek(bin, TAM_CABECALHO, SEEK_SET);
 
@@ -501,6 +506,5 @@ void func6(char *arqBin, int n) {
     fflush(bin); 
     fecharArquivo(bin);
 
-    // Avaliação
     BinarioNaTela(arqBin);
 }

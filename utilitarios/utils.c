@@ -4,22 +4,25 @@
 #include <ctype.h>
 #include "utils.h"
 
-// extrai o proximo campo do CSV avançando o ponteiro da linha. feito por conta de dificuldade em fazer strtok funcionar
+
+// Extrai o proximo campo CSV de '*line_ptr', copiando para 'field' e avancando o ponteiro alem do separador.
+// Implementado manualmente para evitar problemas de estado global do strtok.
 void getProxCampo(char **line_ptr, char *field) {
     char *p = *line_ptr;
     int i = 0;
-    // le ate nova linha ou virgula
+    // Copia caracteres ate encontrar virgula, nova linha ou fim de string
     while (*p && *p != ',' && *p != '\n' && *p != '\r') {
         field[i++] = *p++;
     }
     field[i] = '\0';
     if (*p == ',') {
-        p++; //pula o separador
+        p++; // consome o separador para posicionar no inicio do proximo campo
     }
     *line_ptr = p;
 }
 
 
+// Funcao fornecida: calcula e imprime o checksum do arquivo binario (soma de bytes / 100.0)
 void BinarioNaTela(char *arquivo) {
     FILE *fs;
     if (arquivo == NULL || !(fs = fopen(arquivo, "rb"))) {
@@ -40,16 +43,25 @@ void BinarioNaTela(char *arquivo) {
     fclose(fs);
 }
 
+
+// Funcao fornecida: le uma string da entrada padrao que pode estar entre aspas ou ser "NULO".
+// Strings entre aspas: extrai o conteudo interno sem as aspas.
+// "NULO" ou "nulo": armazena string vazia em 'str'.
+// Outros valores: lidos normalmente como token.
 void ScanQuoteString(char *str) {
     char R;
+    // Consome espacos em branco iniciais
     while ((R = getchar()) != EOF && isspace(R));
     if (R == 'N' || R == 'n') {
+        // Consome os 3 caracteres restantes de "ULO"
         getchar(); getchar(); getchar();
         strcpy(str, "");
     } else if (R == '\"') {
+        // Le o conteudo entre aspas; se vazio, armazena string vazia
         if (scanf("%[^\"]", str) != 1) strcpy(str, "");
-        getchar();
+        getchar(); // consome o fecha-aspas
     } else if (R != EOF) {
+        // Primeiro caractere ja lido; le o restante do token
         str[0] = R;
         scanf("%s", &str[1]);
     } else {

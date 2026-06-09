@@ -4,25 +4,26 @@
 #include "../utilitarios/utils.h"
 
 
-//le registros do csv e salva em struct registro
+// Le uma linha do CSV e preenche todos os campos da struct Registro.
+// Campos ausentes (celula vazia) sao armazenados como -1 (int) ou string vazia (string).
 void lerRegistroCSV(char *linha, Registro *r) {
     char *ptr = linha;
     char campo[256];
 
-    // 1. codEstacao (não aceita nulo)
+    // 1. codEstacao — obrigatorio, nunca nulo no CSV
     getProxCampo(&ptr, campo);
     r->codEstacao = atoi(campo);
 
-    // 2. nomeEstacao (não aceita nulo)
+    // 2. nomeEstacao — obrigatorio, nunca nulo no CSV
     getProxCampo(&ptr, campo);
     r->tamNomeEstacao = strlen(campo);
     strcpy(r->nomeEstacao, campo);
 
-    // 3. codLinha
+    // 3. codLinha — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->codLinha = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 4. nomeLinha
+    // 4. nomeLinha — pode ser vazio (NULO = string vazia, tamanho 0)
     getProxCampo(&ptr, campo);
     if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
         r->tamNomeLinha = 0;
@@ -32,19 +33,19 @@ void lerRegistroCSV(char *linha, Registro *r) {
         strcpy(r->nomeLinha, campo);
     }
 
-    // 5. codProxEstacao
+    // 5. codProxEstacao — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->codProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 6. distProxEstacao
+    // 6. distProxEstacao — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->distProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 7. codLinhaIntegra
+    // 7. codLinhaIntegra — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->codLinhaIntegra = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 8. codEstIntegra (O último campo, que costuma trazer o "Enter" escondido)
+    // 8. codEstIntegra — ultimo campo; pode trazer '\r' ou '\n' residual do fim de linha
     getProxCampo(&ptr, campo);
     if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
         r->codEstIntegra = -1;
@@ -52,11 +53,14 @@ void lerRegistroCSV(char *linha, Registro *r) {
         r->codEstIntegra = atoi(campo);
     }
 
+    // Campos de controle: registro ativo e sem proximo na pilha de removidos
     r->removido = '0';
     r->proximo = -1;
 }
 
-//escreve um registro salvo em struct para o arquivo binário
+
+// Serializa o Registro no arquivo binario, garantindo exatamente TAM_REGISTRO (80) bytes.
+// O espaco restante apos os campos e preenchido com '$' para manter o tamanho fixo.
 void escreveRegistroBin(FILE *bin, Registro *r) {
     fwrite(&r->removido, 1, 1, bin);
     fwrite(&r->proximo, 4, 1, bin);
@@ -67,7 +71,7 @@ void escreveRegistroBin(FILE *bin, Registro *r) {
     fwrite(&r->codLinhaIntegra, 4, 1, bin);
     fwrite(&r->codEstIntegra, 4, 1, bin);
     
-    // trata campos de tamanho variavel
+    // Campos de tamanho variavel: grava o tamanho seguido do conteudo
     fwrite(&r->tamNomeEstacao, 4, 1, bin);
     if (r->tamNomeEstacao > 0) {
         fwrite(r->nomeEstacao, 1, r->tamNomeEstacao, bin);
@@ -78,37 +82,38 @@ void escreveRegistroBin(FILE *bin, Registro *r) {
         fwrite(r->nomeLinha, 1, r->tamNomeLinha, bin);
     }
 
-
-    //calculo de lixo: calcula quanto falta para chegar nos 80 bytes e preenche a quantidade que falta com '$'
+    // Calcula quantos bytes faltam para completar os 80 fixos e preenche com '$'
+    // 37 = 1(removido) + 4(proximo) + 6*4(ints fixos) + 4(tamNome1) + 4(tamNome2)
     int bytes_escritos = 37 + r->tamNomeEstacao + r->tamNomeLinha;
-    int lixo = 80 - bytes_escritos;
+    int lixo = TAM_REGISTRO - bytes_escritos;
     char cifrao = '$';
-    
     for (int i = 0; i < lixo; i++) {
         fwrite(&cifrao, 1, 1, bin);
     }
 }
 
-// Le exatamente 80 bytes do binário e decodifica para a struct Registro
+
+// Le exatamente TAM_REGISTRO bytes do binario e desserializa para a struct Registro.
+// Retorna: 0 = EOF, 1 = leitura normal, 2 = registro removido (pulado).
 int leRegistroBin(FILE *bin, Registro *r) {
-    // Le o campo 'removido' (1 byte)
+    // Tenta ler o byte 'removido'; EOF indica fim dos registros
     if (fread(&r->removido, 1, 1, bin) != 1) {
-        return 0; // Retorna 0 quando chega no Fim do Arquivo (EOF)
+        return 0;
     }
     
-    //Pula registros removidos com fseek
+    // Registro removido: pula os 79 bytes restantes sem decodificar
     if (r->removido == '1') {
-        fseek(bin, 79, SEEK_CUR); // Pula os 79 bytes restantes deste registro
-        return 2; //Codigo 2 indica que o registro foi pulado
+        fseek(bin, 79, SEEK_CUR);
+        return 2;
     }
     
-    // Se nao removido, le os 79 bytes restantes
+    // Registro ativo: le os 79 bytes restantes em um buffer e desserializa
     char buffer[79];
     fread(buffer, 1, 79, bin);
     
     int pos = 0;
     
-    // Lendo campos de tamanho fixo
+    // Campos de tamanho fixo (4 bytes cada)
     memcpy(&r->proximo, &buffer[pos], 4); pos += 4;
     memcpy(&r->codEstacao, &buffer[pos], 4); pos += 4;
     memcpy(&r->codLinha, &buffer[pos], 4); pos += 4;
@@ -117,12 +122,12 @@ int leRegistroBin(FILE *bin, Registro *r) {
     memcpy(&r->codLinhaIntegra, &buffer[pos], 4); pos += 4;
     memcpy(&r->codEstIntegra, &buffer[pos], 4); pos += 4;
     
-    // Le os campos de tamanho variável, lendo primeiro o tamanho
+    // Campos de tamanho variavel: le o tamanho e depois a string
     memcpy(&r->tamNomeEstacao, &buffer[pos], 4); pos += 4;
     if (r->tamNomeEstacao > 0) {
         memcpy(r->nomeEstacao, &buffer[pos], r->tamNomeEstacao);
     }
-    r->nomeEstacao[r->tamNomeEstacao] = '\0';
+    r->nomeEstacao[r->tamNomeEstacao] = '\0'; // garante terminador de string
     pos += r->tamNomeEstacao;
     
     memcpy(&r->tamNomeLinha, &buffer[pos], 4); pos += 4;
@@ -131,10 +136,11 @@ int leRegistroBin(FILE *bin, Registro *r) {
     }
     r->nomeLinha[r->tamNomeLinha] = '\0';
     
-    return 1; // Retorna 1 indicando sucesso na leitura
+    return 1;
 }
 
-//imprime um registro na tela, lidando com registros vazios
+
+// Imprime todos os campos do Registro, substituindo valores ausentes por "NULO"
 void imprimeRegistro(Registro *r) {
     printf("%d ", r->codEstacao);
     
@@ -161,8 +167,9 @@ void imprimeRegistro(Registro *r) {
 }
 
 
-
-//identifica qual critério está sendo checado, e depois verifica se o registro bate com a busca
+// Verifica se o Registro satisfaz um criterio de busca (campo == valor).
+// Trata tanto campos inteiros quanto strings, alem de buscas por NULO.
+// Retorna 1 se o criterio e atendido, 0 caso contrario ou campo desconhecido.
 int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
     if (strcmp(campo, "codEstacao") == 0) {
         return isNulo ? (r->codEstacao == -1) : (r->codEstacao == valorInt);
@@ -176,6 +183,7 @@ int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int i
     else if (strcmp(campo, "distProxEstacao") == 0) {
         return isNulo ? (r->distProxEstacao == -1) : (r->distProxEstacao == valorInt);
     }
+    // Aceita tanto "codLinhaIntegra" quanto a variante com 'l' minusculo (typo historico do CSV)
     else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) {
         return isNulo ? (r->codLinhaIntegra == -1) : (r->codLinhaIntegra == valorInt);
     }
@@ -188,20 +196,20 @@ int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int i
     else if (strcmp(campo, "nomeLinha") == 0) {
         return isNulo ? (r->tamNomeLinha == 0) : (strcmp(r->nomeLinha, valorStr) == 0);
     }
-    return 0; // Campo não reconhecido
+    return 0; // campo nao reconhecido: criterio nunca e atendido
 }
 
 
-
-//lê entrada do usuário para novos registros 
+// Le os campos de um novo Registro a partir da entrada padrao.
+// Strings sao lidas com ScanQuoteString; "NULO" e convertido para -1 (int) ou string vazia.
 void leRegistroTeclado(Registro *r) {
     char buffer[256];
 
-    // 1. codEstacao (int)
+    // 1. codEstacao
     scanf("%s", buffer);
     r->codEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 2. nomeEstacao (string)
+    // 2. nomeEstacao
     ScanQuoteString(buffer);
     if (strcmp(buffer, "") == 0 || strcmp(buffer, "NULO") == 0) {
         r->tamNomeEstacao = 0;
@@ -211,11 +219,11 @@ void leRegistroTeclado(Registro *r) {
         strcpy(r->nomeEstacao, buffer);
     }
 
-    // 3. codLinha (int)
+    // 3. codLinha
     scanf("%s", buffer);
     r->codLinha = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 4. nomeLinha (string)
+    // 4. nomeLinha
     ScanQuoteString(buffer);
     if (strcmp(buffer, "") == 0 || strcmp(buffer, "NULO") == 0) {
         r->tamNomeLinha = 0;
@@ -225,39 +233,37 @@ void leRegistroTeclado(Registro *r) {
         strcpy(r->nomeLinha, buffer);
     }
 
-    // 5. codProxEstacao (int)
+    // 5. codProxEstacao
     scanf("%s", buffer);
     r->codProxEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 6. distProxEstacao (int)
+    // 6. distProxEstacao
     scanf("%s", buffer);
     r->distProxEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 7. codLinhaIntegra (int)
+    // 7. codLinhaIntegra
     scanf("%s", buffer);
     r->codLinhaIntegra = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 8. codEstIntegra (int)
+    // 8. codEstIntegra
     scanf("%s", buffer);
     r->codEstIntegra = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
     
-
-    // Campos de controle lógicos para um novo registro
+    // Campos de controle: registro novo e sempre ativo e sem proximo na pilha
     r->removido = '0';
     r->proximo = -1;
 }
 
-// Atualiza um campo específico do registro com o novo valor
+
+// Atualiza um campo especifico do Registro com o novo valor fornecido.
+// Para strings, trata o caso NULO (limpa o campo) e o caso normal (copia o novo valor).
 void autualizaCampo(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
     if (strcmp(campo, "codEstacao") == 0) r->codEstacao = valorInt;
     else if (strcmp(campo, "codLinha") == 0) r->codLinha = valorInt;
     else if (strcmp(campo, "codProxEstacao") == 0) r->codProxEstacao = valorInt;
     else if (strcmp(campo, "distProxEstacao") == 0) r->distProxEstacao = valorInt;
-    
     else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) r->codLinhaIntegra = valorInt;
-    
     else if (strcmp(campo, "codEstIntegra") == 0 || strcmp(campo, "codEstacaoIntegra") == 0) r->codEstIntegra = valorInt;
-    
     else if (strcmp(campo, "nomeEstacao") == 0) {
         if (isNulo) {
             r->tamNomeEstacao = 0;

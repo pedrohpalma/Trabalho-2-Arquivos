@@ -58,6 +58,12 @@ int main() {
             func6(arqBin, n);
             break;
 
+        case 7:
+            // Funcionalidade 7: Criacao de indice arvore-B
+            scanf("%s %s", arqEntrada, arqSaida);
+            func7(arqEntrada, arqSaida);
+            break;
+
         default:
             printf("Funcionalidade invalida.\n");
             break;

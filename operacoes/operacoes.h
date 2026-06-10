@@ -10,6 +10,7 @@
  *   search.h — func3 (SELECT WHERE)
  *   delete.h — func4 (DELETE)
  *   update.h — func6 (UPDATE)
+ *   func7    — cria indice arvore-B
  *
  * Inclua este arquivo para ter acesso a todas as funcionalidades de uma vez.
  */
@@ -19,5 +20,7 @@
 #include "search.h"
 #include "delete.h"
 #include "update.h"
+
+void func7(char *arqEntrada, char *arqIndice);
 
 #endif

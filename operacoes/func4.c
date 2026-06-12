@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "delete.h"
+#include "func4.h"
 #include "../arquivos/arquivos.h"
 #include "../cabecalho/cabecalho.h"
 #include "../registro/registro.h"

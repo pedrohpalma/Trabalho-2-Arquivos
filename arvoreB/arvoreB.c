@@ -17,7 +17,7 @@ int criarArquivoIndiceArvoreB(FILE *arquivoIndice)
 }
 
 // Aloca um RRN novo ou reaproveita um no removido da pilha
-static int alocarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int *rrn)
+int alocarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int *rrn)
 {
     if (cabecalho->topo != -1)
     {
@@ -39,7 +39,7 @@ static int alocarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int
 }
 
 // Busca sequencial dentro dos nos da arvore-B
-static int buscarArvoreBRec(FILE *arquivoIndice, int rrn, int chave, int *referencia)
+int buscarArvoreBRec(FILE *arquivoIndice, int rrn, int chave, int *referencia)
 {
     if (rrn == -1)
         return 0;
@@ -179,8 +179,19 @@ static int inserirArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
     Promocao novaPromocao;
     int filhoPromoveu = 0;
 
+    if (rrn == -1)
+    {
+        promovida->chave = chave;
+        promovida->referencia = referencia;
+        promovida->filhoDireita = -1;
+        *houvePromocao = 1;
+        return 1;
+    }
+
     if (!lerNoArvoreB(arquivoIndice, rrn, &no))
         return 0;
+
+    int pos = buscarPosicaoNo(&no, chave);
 
     if (no.tipoNo == -1)
     {
@@ -201,12 +212,6 @@ static int inserirArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
             return 0;
         *houvePromocao = 1;
         return 1;
-    }
-
-    int pos = no.nroChaves;
-    while (pos > 0 && chave < no.C[pos - 1])
-    {
-        pos--;
     }
 
     if (!inserirArvoreBRec(arquivoIndice, cabecalho, no.P[pos], chave, referencia,

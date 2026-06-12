@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "read.h"
+#include "func2.h"
 #include "../arquivos/arquivos.h"
 #include "../cabecalho/cabecalho.h"
 #include "../registro/registro.h"

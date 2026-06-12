@@ -64,6 +64,12 @@ int main() {
             func7(arqEntrada, arqSaida);
             break;
 
+        case 8:
+            // Funcionalidade 8: Select com indice arvore-B
+            scanf("%s %s %d", arqEntrada, arqSaida, &n);
+            func8(arqEntrada, arqSaida, n);
+            break;
+
         default:
             printf("Funcionalidade invalida.\n");
             break;

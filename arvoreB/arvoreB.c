@@ -63,8 +63,6 @@ int buscarArvoreB(FILE *arquivoIndice, int chave, int *referencia)
     CabecalhoArvoreB cabecalho;
     if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho))
         return 0;
-    if (cabecalho.status == '0')
-        return 0;
 
     return buscarArvoreBRec(arquivoIndice, cabecalho.noRaiz, chave, referencia);
 }
@@ -312,6 +310,440 @@ int inserirArvoreB(FILE *arquivoIndice, int chave, int referencia)
         if (!escreverNoArvoreB(arquivoIndice, rrnNovaRaiz, &novaRaiz))
             return 0;
     }
+
+    return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho);
+}
+
+static int noEhFolha(NoArvoreB *no)
+{
+    return no->tipoNo == -1;
+}
+
+static void limparNoAtivo(NoArvoreB *no)
+{
+    inicializarCamposNaoUsadosComMenosUm(no);
+}
+
+static int escreverNoRemovidoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no)
+{
+    fseek(arquivoIndice, calcularOffsetNoArvoreB(rrn), SEEK_SET);
+    if (fwrite(&no->removido, 1, 1, arquivoIndice) != 1)
+        return 0;
+    if (fwrite(&no->proximo, 4, 1, arquivoIndice) != 1)
+        return 0;
+    fflush(arquivoIndice);
+    return 1;
+}
+
+static int liberarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrn)
+{
+    NoArvoreB no;
+    if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+        return 0;
+
+    no.removido = '1';
+    no.proximo = cabecalho->topo;
+    if (!escreverNoRemovidoArvoreB(arquivoIndice, rrn, &no))
+        return 0;
+
+    cabecalho->topo = rrn;
+    cabecalho->nroNos--;
+    return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
+}
+
+static void removerChaveDoNo(NoArvoreB *no, int pos)
+{
+    for (int i = pos; i < no->nroChaves - 1; i++)
+    {
+        no->C[i] = no->C[i + 1];
+        no->PR[i] = no->PR[i + 1];
+    }
+
+    no->nroChaves--;
+    limparNoAtivo(no);
+}
+
+static void removerSeparadorDoPai(NoArvoreB *pai, int posSeparador)
+{
+    int antigoNroChaves = pai->nroChaves;
+
+    for (int i = posSeparador; i < antigoNroChaves - 1; i++)
+    {
+        pai->C[i] = pai->C[i + 1];
+        pai->PR[i] = pai->PR[i + 1];
+    }
+
+    for (int i = posSeparador + 1; i < antigoNroChaves; i++)
+    {
+        pai->P[i] = pai->P[i + 1];
+    }
+
+    pai->nroChaves--;
+    limparNoAtivo(pai);
+}
+
+static int encontrarSucessorEmFolha(FILE *arquivoIndice, int rrnAtual, int *chave, int *referencia)
+{
+    NoArvoreB no;
+
+    while (rrnAtual != -1)
+    {
+        if (!lerNoArvoreB(arquivoIndice, rrnAtual, &no))
+            return 0;
+
+        if (noEhFolha(&no))
+        {
+            if (no.nroChaves == 0)
+                return 0;
+            *chave = no.C[0];
+            *referencia = no.PR[0];
+            return 1;
+        }
+
+        rrnAtual = no.P[0];
+    }
+
+    return 0;
+}
+
+static void juntarNosComSeparador(NoArvoreB *esquerda, NoArvoreB *direita, NoArvoreB *pai,
+                                  int posSeparador, int chaves[], int referencias[], int ponteiros[])
+{
+    int qtd = 0;
+
+    for (int i = 0; i < 5; i++)
+        ponteiros[i] = -1;
+
+    if (!noEhFolha(esquerda))
+    {
+        for (int i = 0; i <= esquerda->nroChaves; i++)
+            ponteiros[i] = esquerda->P[i];
+    }
+
+    for (int i = 0; i < esquerda->nroChaves; i++)
+    {
+        chaves[qtd] = esquerda->C[i];
+        referencias[qtd] = esquerda->PR[i];
+        qtd++;
+    }
+
+    chaves[qtd] = pai->C[posSeparador];
+    referencias[qtd] = pai->PR[posSeparador];
+    qtd++;
+
+    if (!noEhFolha(direita))
+    {
+        int inicio = esquerda->nroChaves + 1;
+        for (int i = 0; i <= direita->nroChaves; i++)
+            ponteiros[inicio + i] = direita->P[i];
+    }
+
+    for (int i = 0; i < direita->nroChaves; i++)
+    {
+        chaves[qtd] = direita->C[i];
+        referencias[qtd] = direita->PR[i];
+        qtd++;
+    }
+}
+
+static void distribuirEntreNos(NoArvoreB *esquerda, NoArvoreB *direita, NoArvoreB *pai,
+                               int posSeparador, int chaves[], int referencias[], int ponteiros[], int totalChaves)
+{
+    int qtdEsquerda = totalChaves / 2;
+    int posPromovida = qtdEsquerda;
+    int qtdDireita = totalChaves - qtdEsquerda - 1;
+
+    esquerda->nroChaves = qtdEsquerda;
+    direita->nroChaves = qtdDireita;
+
+    for (int i = 0; i < MAX_CHAVES_ARVORE_B; i++)
+    {
+        esquerda->C[i] = -1;
+        esquerda->PR[i] = -1;
+        direita->C[i] = -1;
+        direita->PR[i] = -1;
+    }
+
+    for (int i = 0; i < ORDEM_ARVORE_B; i++)
+    {
+        esquerda->P[i] = -1;
+        direita->P[i] = -1;
+    }
+
+    for (int i = 0; i < qtdEsquerda; i++)
+    {
+        esquerda->C[i] = chaves[i];
+        esquerda->PR[i] = referencias[i];
+    }
+
+    pai->C[posSeparador] = chaves[posPromovida];
+    pai->PR[posSeparador] = referencias[posPromovida];
+
+    for (int i = 0; i < qtdDireita; i++)
+    {
+        direita->C[i] = chaves[posPromovida + 1 + i];
+        direita->PR[i] = referencias[posPromovida + 1 + i];
+    }
+
+    if (!noEhFolha(esquerda))
+    {
+        for (int i = 0; i <= qtdEsquerda; i++)
+            esquerda->P[i] = ponteiros[i];
+        for (int i = 0; i <= qtdDireita; i++)
+            direita->P[i] = ponteiros[posPromovida + 1 + i];
+    }
+
+    limparNoAtivo(esquerda);
+    limparNoAtivo(direita);
+    limparNoAtivo(pai);
+}
+
+static int redistribuirNos(FILE *arquivoIndice, int rrnPai, int posSeparador, int rrnEsquerda, int rrnDireita)
+{
+    NoArvoreB pai, esquerda, direita;
+    int chaves[4], referencias[4], ponteiros[5];
+
+    if (!lerNoArvoreB(arquivoIndice, rrnPai, &pai))
+        return 0;
+    if (!lerNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda))
+        return 0;
+    if (!lerNoArvoreB(arquivoIndice, rrnDireita, &direita))
+        return 0;
+
+    juntarNosComSeparador(&esquerda, &direita, &pai, posSeparador, chaves, referencias, ponteiros);
+    distribuirEntreNos(&esquerda, &direita, &pai, posSeparador, chaves, referencias, ponteiros,
+                       esquerda.nroChaves + direita.nroChaves + 1);
+
+    if (!escreverNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda))
+        return 0;
+    if (!escreverNoArvoreB(arquivoIndice, rrnDireita, &direita))
+        return 0;
+    if (!escreverNoArvoreB(arquivoIndice, rrnPai, &pai))
+        return 0;
+
+    return 1;
+}
+
+static int concatenarNos(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrnPai,
+                         int posSeparador, int rrnEsquerda, int rrnDireita)
+{
+    NoArvoreB pai, esquerda, direita;
+    int pos = 0;
+
+    if (!lerNoArvoreB(arquivoIndice, rrnPai, &pai))
+        return 0;
+    if (!lerNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda))
+        return 0;
+    if (!lerNoArvoreB(arquivoIndice, rrnDireita, &direita))
+        return 0;
+
+    pos = esquerda.nroChaves;
+    esquerda.C[pos] = pai.C[posSeparador];
+    esquerda.PR[pos] = pai.PR[posSeparador];
+    pos++;
+
+    for (int i = 0; i < direita.nroChaves; i++)
+    {
+        esquerda.C[pos] = direita.C[i];
+        esquerda.PR[pos] = direita.PR[i];
+        pos++;
+    }
+
+    if (!noEhFolha(&esquerda))
+    {
+        int inicio = esquerda.nroChaves + 1;
+        for (int i = 0; i <= direita.nroChaves; i++)
+            esquerda.P[inicio + i] = direita.P[i];
+    }
+
+    esquerda.nroChaves = pos;
+    limparNoAtivo(&esquerda);
+    removerSeparadorDoPai(&pai, posSeparador);
+
+    if (!escreverNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda))
+        return 0;
+    if (!escreverNoArvoreB(arquivoIndice, rrnPai, &pai))
+        return 0;
+    if (!liberarNoArvoreB(arquivoIndice, cabecalho, rrnDireita))
+        return 0;
+
+    return 1;
+}
+
+static int tratarUnderflow(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrnPai, int indiceFilho)
+{
+    NoArvoreB pai, irmao;
+
+    if (!lerNoArvoreB(arquivoIndice, rrnPai, &pai))
+        return 0;
+
+    if (indiceFilho < pai.nroChaves && pai.P[indiceFilho + 1] != -1)
+    {
+        if (!lerNoArvoreB(arquivoIndice, pai.P[indiceFilho + 1], &irmao))
+            return 0;
+        if (irmao.nroChaves > 1)
+            return redistribuirNos(arquivoIndice, rrnPai, indiceFilho, pai.P[indiceFilho], pai.P[indiceFilho + 1]);
+    }
+
+    if (indiceFilho > 0 && pai.P[indiceFilho - 1] != -1)
+    {
+        if (!lerNoArvoreB(arquivoIndice, pai.P[indiceFilho - 1], &irmao))
+            return 0;
+        if (irmao.nroChaves > 1)
+            return redistribuirNos(arquivoIndice, rrnPai, indiceFilho - 1, pai.P[indiceFilho - 1], pai.P[indiceFilho]);
+    }
+
+    if (indiceFilho > 0 && pai.P[indiceFilho - 1] != -1)
+        return concatenarNos(arquivoIndice, cabecalho, rrnPai, indiceFilho - 1, pai.P[indiceFilho - 1], pai.P[indiceFilho]);
+
+    if (indiceFilho < pai.nroChaves && pai.P[indiceFilho + 1] != -1)
+        return concatenarNos(arquivoIndice, cabecalho, rrnPai, indiceFilho, pai.P[indiceFilho], pai.P[indiceFilho + 1]);
+
+    return 1;
+}
+
+static int removerArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrn,
+                             int chave, int ehRaiz, int *encontrou, int *underflow)
+{
+    NoArvoreB no;
+
+    *encontrou = 0;
+    *underflow = 0;
+
+    if (rrn == -1)
+        return 1;
+
+    if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+        return 0;
+
+    int pos = buscarPosicaoNo(&no, chave);
+
+    if (pos < no.nroChaves && no.C[pos] == chave)
+    {
+        *encontrou = 1;
+
+        if (noEhFolha(&no))
+        {
+            removerChaveDoNo(&no, pos);
+            if (!escreverNoArvoreB(arquivoIndice, rrn, &no))
+                return 0;
+
+            *underflow = (!ehRaiz && no.nroChaves < 1);
+            return 1;
+        }
+
+        int chaveSucessora, referenciaSucessora;
+        int encontrouFilho, underflowFilho;
+
+        if (!encontrarSucessorEmFolha(arquivoIndice, no.P[pos + 1], &chaveSucessora, &referenciaSucessora))
+            return 0;
+
+        no.C[pos] = chaveSucessora;
+        no.PR[pos] = referenciaSucessora;
+        if (!escreverNoArvoreB(arquivoIndice, rrn, &no))
+            return 0;
+
+        if (!removerArvoreBRec(arquivoIndice, cabecalho, no.P[pos + 1], chaveSucessora, 0,
+                               &encontrouFilho, &underflowFilho))
+            return 0;
+
+        if (underflowFilho)
+        {
+            if (!tratarUnderflow(arquivoIndice, cabecalho, rrn, pos + 1))
+                return 0;
+        }
+
+        if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+            return 0;
+        *underflow = (!ehRaiz && no.nroChaves < 1);
+        return 1;
+    }
+
+    if (noEhFolha(&no))
+        return 1;
+
+    if (no.P[pos] == -1)
+        return 1;
+
+    int encontrouFilho, underflowFilho;
+    if (!removerArvoreBRec(arquivoIndice, cabecalho, no.P[pos], chave, 0, &encontrouFilho, &underflowFilho))
+        return 0;
+
+    *encontrou = encontrouFilho;
+
+    if (underflowFilho)
+    {
+        if (!tratarUnderflow(arquivoIndice, cabecalho, rrn, pos))
+            return 0;
+    }
+
+    if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+        return 0;
+    *underflow = (!ehRaiz && no.nroChaves < 1);
+    return 1;
+}
+
+static int ajustarTipoRaiz(FILE *arquivoIndice, int rrnRaiz)
+{
+    NoArvoreB raiz;
+    if (!lerNoArvoreB(arquivoIndice, rrnRaiz, &raiz))
+        return 0;
+
+    if (raiz.tipoNo != -1)
+        raiz.tipoNo = 0;
+
+    return escreverNoArvoreB(arquivoIndice, rrnRaiz, &raiz);
+}
+
+static int ajustarRaizAposRemocao(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho)
+{
+    if (cabecalho->noRaiz == -1)
+        return 1;
+
+    NoArvoreB raiz;
+    int rrnRaizAntiga = cabecalho->noRaiz;
+
+    if (!lerNoArvoreB(arquivoIndice, cabecalho->noRaiz, &raiz))
+        return 0;
+
+    if (raiz.nroChaves > 0)
+        return ajustarTipoRaiz(arquivoIndice, cabecalho->noRaiz);
+
+    if (noEhFolha(&raiz))
+    {
+        cabecalho->noRaiz = -1;
+        if (!liberarNoArvoreB(arquivoIndice, cabecalho, rrnRaizAntiga))
+            return 0;
+        return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
+    }
+
+    int rrnNovaRaiz = raiz.P[0];
+    cabecalho->noRaiz = rrnNovaRaiz;
+
+    if (!liberarNoArvoreB(arquivoIndice, cabecalho, rrnRaizAntiga))
+        return 0;
+    if (rrnNovaRaiz != -1 && !ajustarTipoRaiz(arquivoIndice, rrnNovaRaiz))
+        return 0;
+
+    return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
+}
+
+int removerArvoreB(FILE *arquivoIndice, int chave)
+{
+    CabecalhoArvoreB cabecalho;
+    int encontrou, underflow;
+
+    if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho))
+        return 0;
+
+    if (cabecalho.noRaiz == -1)
+        return 1;
+
+    if (!removerArvoreBRec(arquivoIndice, &cabecalho, cabecalho.noRaiz, chave, 1, &encontrou, &underflow))
+        return 0;
+
+    if (!ajustarRaizAposRemocao(arquivoIndice, &cabecalho))
+        return 0;
 
     return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho);
 }

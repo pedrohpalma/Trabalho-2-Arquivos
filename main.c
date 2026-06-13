@@ -77,6 +77,12 @@ int main()
         func9(arqEntrada, arqSaida, n);
         break;
 
+    case 10:
+        // Funcionalidade 10: Remocao atualizando indice arvore-B
+        scanf("%s %s %d", arqEntrada, arqSaida, &n);
+        func10(arqEntrada, arqSaida, n);
+        break;
+
     default:
         printf("Funcionalidade invalida.\n");
         break;

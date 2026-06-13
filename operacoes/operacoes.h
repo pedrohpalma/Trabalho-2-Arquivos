@@ -10,5 +10,6 @@
 #include "func7.h"
 #include "func8.h"
 #include "func9.h"
+#include "func10.h"
 
 #endif

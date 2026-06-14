@@ -1,6 +1,6 @@
 #include "cabecalhoArvoreB.h"
 
-// Cria o cabecalho inicial do arquivo de indice arvore-B
+// Inicializa e retorna uma estrutura de cabeçalho na memória de uma Árvore-B vazia.
 CabecalhoArvoreB criarCabecalhoArvoreBVazio()
 {
     CabecalhoArvoreB cabecalho;
@@ -8,15 +8,16 @@ CabecalhoArvoreB criarCabecalhoArvoreBVazio()
     cabecalho.noRaiz = -1;
     cabecalho.topo = -1;
     cabecalho.proxRRN = 0;
-    cabecalho.nroNos = 0;
+    cabecalho.nroNos = 0; 
     return cabecalho;
 }
 
-// Le os 17 bytes do cabecalho do arquivo de indice
+// Lê os campos do cabeçalho do arquivo de índice e os armazena na estrutura fornecida. 
 int lerCabecalhoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho)
 {
+    // Lê os campos do cabeçalho separadamente para manter o formato exato
     fseek(arquivoIndice, 0, SEEK_SET);
-
+    
     if (fread(&cabecalho->status, 1, 1, arquivoIndice) != 1)
         return 0;
     if (fread(&cabecalho->noRaiz, 4, 1, arquivoIndice) != 1)
@@ -31,9 +32,10 @@ int lerCabecalhoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho)
     return 1;
 }
 
-// Escreve os campos do cabecalho separadamente para manter o formato exato
+// Escreve os campos do cabeçalho de volta no arquivo de índice. 
 int escreverCabecalhoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho)
 {
+    // Move o ponteiro do arquivo para o início para escrever o cabeçalho
     fseek(arquivoIndice, 0, SEEK_SET);
 
     if (fwrite(&cabecalho->status, 1, 1, arquivoIndice) != 1)
@@ -51,10 +53,11 @@ int escreverCabecalhoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho)
     return 1;
 }
 
-// Atualiza apenas o byte de status do arquivo de indice
+// Atualiza o campo de status do cabeçalho no arquivo de índice.
 int atualizarStatusArvoreB(FILE *arquivoIndice, char status)
 {
     fseek(arquivoIndice, 0, SEEK_SET);
+
     if (fwrite(&status, 1, 1, arquivoIndice) != 1)
         return 0;
     fflush(arquivoIndice);

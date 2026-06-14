@@ -9,19 +9,18 @@
 #include "../arvoreB/arvoreB.h"
 #include "../cabecalhoArvoreB/cabecalhoArvoreB.h"
 
-// Estrutura para armazenar temporariamente os registros que devem ser removidos.
-// Isso evita corromper a leitura enquanto o arquivo esta sendo varrido.
+// armazena temporariamente dados dos registros a serem removidos para evitar conflitos durante a varredura
 typedef struct {
     long byteOffset;
     int codEstacao;
 } RegistroRemocao;
 
-// Funcao Auxiliar: Gerencia a memoria dinamica do array de remocoes (realoca dobrando a capacidade quando necessario)
+// gerencia a alocacao dinamica do vetor auxiliar de remocoes, dobrando sua capacidade quando enche
 static int adicionarRemocao(RegistroRemocao **remocoes, int *qtdRemocoes, int *capacidade, long byteOffset, int codEstacao) {
     if (*qtdRemocoes >= *capacidade) {
         int novaCapacidade = (*capacidade == 0) ? 8 : (*capacidade * 2);
         RegistroRemocao *novo = realloc(*remocoes, novaCapacidade * sizeof(RegistroRemocao));
-        if (!novo) return 0; // Falha de alocacao
+        if (!novo) return 0;
         *remocoes = novo;
         *capacidade = novaCapacidade;
     }
@@ -32,42 +31,42 @@ static int adicionarRemocao(RegistroRemocao **remocoes, int *qtdRemocoes, int *c
     return 1;
 }
 
-// Funcao Auxiliar: Coleta offsets de todos os registros que deram "match" com os criterios
-// Usa a Arvore-B se tiver o codEstacao, senao faz busca sequencial. Retorna 1 (Sucesso) ou 0 (Erro de memoria).
+// encontra os registros que satisfazem os criterios e salva suas posicoes no vetor auxiliar de remocoes
 static int buscarRegistrosParaRemocao(FILE *bin, FILE *indice, CampoBusca criterios[], int qtdCriterios, int possuiCodEstacao, int valorCodEstacao, RegistroRemocao **remocoes, int *qtdRemocoes) {
     int capacidade = 0;
     *remocoes = NULL;
     *qtdRemocoes = 0;
 
-    // Cenário 1: Busca otimizada via Arvore-B
+    // faz a busca otimizada pela arvoreB se o codigo da estacao for um dos criterios
     if (possuiCodEstacao) {
         int referencia;
         Registro r;
         int status_leitura;
 
-        if (!buscarArvoreB(indice, valorCodEstacao, &referencia)) return 1; // Nao achou nada, retorna sucesso sem preencher remocoes
+        if (!buscarArvoreB(indice, valorCodEstacao, &referencia)) return 1;
 
         fseek(bin, referencia, SEEK_SET);
         status_leitura = leRegistroBin(bin, &r);
 
-        // Valida se o registro lido do indice satisfaz o RESTANTE dos criterios (ex: codEstacao = X AND nome = Y)
+        // garante que o registro achado pela chave tambem cumpra todos os outros criterios passados
         if (status_leitura == 1 && registroSatisfazCriterios(&r, criterios, qtdCriterios)) {
             if (!adicionarRemocao(remocoes, qtdRemocoes, &capacidade, referencia, r.codEstacao)) return 0;
         }
         return 1;
     }
 
-    // Cenário 2: Busca sequencial (fallback)
+    // realiza busca sequencial no arquivo todo caso nao tenha o codigo da estacao como criterio
     fseek(bin, TAM_CABECALHO, SEEK_SET);
     Registro r;
     int status_leitura;
 
     while (1) {
-        long offsetRegistro = ftell(bin); // Salva a posicao EXATA de onde comeca o registro atual
+        // grava o byte offset exato de onde comeca o registro antes de fazer a leitura
+        long offsetRegistro = ftell(bin);
         status_leitura = leRegistroBin(bin, &r);
 
-        if (status_leitura == 0) break; // EOF
-        if (status_leitura == 2) continue; // Pula ja removidos
+        if (status_leitura == 0) break;
+        if (status_leitura == 2) continue;
 
         if (registroSatisfazCriterios(&r, criterios, qtdCriterios)) {
             if (!adicionarRemocao(remocoes, qtdRemocoes, &capacidade, offsetRegistro, r.codEstacao)) return 0;
@@ -76,26 +75,25 @@ static int buscarRegistrosParaRemocao(FILE *bin, FILE *indice, CampoBusca criter
     return 1;
 }
 
-// Funcao Auxiliar: Efetua a remocao fisica alterando o byte '*' ou '1' e empilhando no topo
+// marca um registro como removido logicamente ('1') e o empilha no cabecalho para futuro reaproveitamento
 static int removerLogicamenteRegistroDados(FILE *bin, Cabecalho *c, long byteOffset) {
     char removido;
-    int rrn = (byteOffset - TAM_CABECALHO) / TAM_REGISTRO; // Traduz byteOffset absoluto para RRN (indice relativo)
+    int rrn = (byteOffset - TAM_CABECALHO) / TAM_REGISTRO;
     int topoAntigo = c->topo;
 
     fseek(bin, byteOffset, SEEK_SET);
     if (fread(&removido, 1, 1, bin) != 1) return 0;
 
-    // Se por acaso já estiver removido (caso edge), aborta silenciosamente
     if (removido == '1') return 1;
 
     removido = '1';
-    fseek(bin, byteOffset, SEEK_SET); // Volta pro inicio do registro para sobrescrever
+    fseek(bin, byteOffset, SEEK_SET);
     
-    // Escreve flag de remocao e atualiza o topo da pilha de removidos
+    // escreve o status de removido e o rrn do topo antigo para manter a ligacao da pilha
     if (fwrite(&removido, 1, 1, bin) != 1) return 0;
     if (fwrite(&topoAntigo, 4, 1, bin) != 1) return 0;
 
-    // Atualiza metadados do cabecalho com o novo topo
+    // atualiza cabecalho para que o topo aponte para o registro recem-removido
     c->topo = rrn;
     fseek(bin, 0, SEEK_SET);
     escreveCabecalho(bin, c);
@@ -104,7 +102,7 @@ static int removerLogicamenteRegistroDados(FILE *bin, Cabecalho *c, long byteOff
     return 1;
 }
 
-// Funcao Delete com Arvore-B: Coleta alvos, aplica remocao no arquivo de dados e exclui chaves do indice
+// coordena a remocao de registros, apagando no arquivo de dados e removendo as chaves da arvoreB
 void func10(char *arqEntrada, char *arqIndice, int n) {
     FILE *bin = abrirArquivo(arqEntrada, "rb+");
     if (!bin) {
@@ -127,13 +125,14 @@ void func10(char *arqEntrada, char *arqIndice, int n) {
     }
 
     CabecalhoArvoreB cabecalhoIndice;
+    // valida se o arquivo de indice esta integro e pronto para uso
     if (!lerCabecalhoArvoreB(indice, &cabecalhoIndice) || cabecalhoIndice.status != '1') {
         printf("Falha no processamento do arquivo.\n");
         fecharArquivo(bin); fecharArquivo(indice);
         return;
     }
 
-    // Marca AMBOS os arquivos como inconsistentes (status '0') durante o processo destrutivo
+    // muda o status de ambos os arquivos para inconsistente durante operacoes de remocao
     c.status = '0';
     fseek(bin, 0, SEEK_SET);
     escreveCabecalho(bin, &c);
@@ -156,7 +155,7 @@ void func10(char *arqEntrada, char *arqIndice, int n) {
 
         lerCriteriosBusca(criterios, m, &possuiCodEstacao, &valorCodEstacao);
 
-        // Etapa 1: Coletar
+        // passo 1: preenche o vetor com todos os registros que deram match com a busca
         if (!buscarRegistrosParaRemocao(bin, indice, criterios, m, possuiCodEstacao, valorCodEstacao, &remocoes, &qtdRemocoes)) {
             free(remocoes);
             printf("Falha no processamento do arquivo.\n");
@@ -164,9 +163,8 @@ void func10(char *arqEntrada, char *arqIndice, int n) {
             return;
         }
 
-        // Etapa 2: Aplicar
+        // passo 2: percorre o vetor e efetiva a delecao no binario e no indice arvoreB
         for (int j = 0; j < qtdRemocoes; j++) {
-            // Remove no .bin
             if (!removerLogicamenteRegistroDados(bin, &c, remocoes[j].byteOffset)) {
                 free(remocoes);
                 printf("Falha no processamento do arquivo.\n");
@@ -174,7 +172,6 @@ void func10(char *arqEntrada, char *arqIndice, int n) {
                 return;
             }
 
-            // Remove no Indice Arvore-B
             if (!removerArvoreB(indice, remocoes[j].codEstacao)) {
                 free(remocoes);
                 printf("Falha no processamento do arquivo.\n");
@@ -182,14 +179,13 @@ void func10(char *arqEntrada, char *arqIndice, int n) {
                 return;
             }
         }
-        free(remocoes); // Limpa o buffer de remocoes desta iteracao
+        free(remocoes);
     }
 
-    // Reconta o numero de registros e valores unicos se sua especificacao exigir
+    // atualiza informacoes globais e devolve a consistencia aos arquivos salvos
     atualizaContagemEstacoes(bin, &c);
     atualizaCabecalho(bin, &c);
 
-    // Atualiza o status do índice para consistente após as remoções
     if (!atualizarStatusArvoreB(indice, '1')) {
         printf("Falha no processamento do arquivo.\n");
         fecharArquivo(bin); fecharArquivo(indice);
@@ -199,7 +195,6 @@ void func10(char *arqEntrada, char *arqIndice, int n) {
     fecharArquivo(bin);
     fecharArquivo(indice);
 
-    // Imprime na tela o checksum dos arquivos resultantes
     BinarioNaTela(arqEntrada);
     BinarioNaTela(arqIndice);
 }

@@ -5,14 +5,7 @@
 
 #define TAM_CABECALHO_ARVORE_B 17
 
-/*
- * status: 0 = Inconsistente / 1 = Consistente
- * noRaiz: RRN que aponta para o nó raiz da árvoreB (armazena -1 se a árvore estiver vazia)
- * topo: RRN do topo da pilha de nós removidos (-1 se não houver removidos)
- * proxRRN: próximo RRN disponível para a criação de um novo nó no fim do arquivo
- * nroNos: quantidade total de nós ativos atualmente armazenados na árvoreB
- */
-
+// Struct do cabecalho do arquivo de indice da Arvore-B
 typedef struct
 {
     char status;
@@ -22,9 +15,16 @@ typedef struct
     int nroNos;
 } CabecalhoArvoreB;
 
+// Inicializa a estrutura do cabecalho na memoria com valores padrao (arvore vazia).
 CabecalhoArvoreB criarCabecalhoArvoreBVazio();
+
+// Le os 17 bytes do cabecalho do arquivo para a memoria.
 int lerCabecalhoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho);
+
+// Grava a estrutura do cabecalho no byte 0 do arquivo de indice.
 int escreverCabecalhoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho);
+
+// Altera diretamente o byte de status no arquivo.
 int atualizarStatusArvoreB(FILE *arquivoIndice, char status);
 
 #endif

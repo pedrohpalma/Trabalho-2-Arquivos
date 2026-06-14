@@ -2,7 +2,7 @@
 #include "../cabecalhoArvoreB/cabecalhoArvoreB.h"
 
 // Preenche todos os campos nao utilizados com -1
-void inicializarCamposNaoUsadosComMenosUm(NoArvoreB *no)
+void limparNoAtivo(NoArvoreB *no)
 {
     for (int i = no->nroChaves; i < MAX_CHAVES_ARVORE_B; i++)
     {
@@ -87,7 +87,7 @@ int lerNoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no)
 // Escreve um no da arvore-B campo a campo, garantindo 53 bytes
 int escreverNoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no)
 {
-    inicializarCamposNaoUsadosComMenosUm(no);
+    limparNoAtivo(no);
     fseek(arquivoIndice, calcularOffsetNoArvoreB(rrn), SEEK_SET);
 
     if (fwrite(&no->removido, 1, 1, arquivoIndice) != 1)
@@ -148,5 +148,5 @@ void inserirChaveOrdenadaNo(NoArvoreB *no, int chave, int referencia, int filhoD
     no->P[pos + 1] = filhoDireita;
     no->nroChaves++;
 
-    inicializarCamposNaoUsadosComMenosUm(no);
+    limparNoAtivo(no);
 }

@@ -2,7 +2,7 @@
 #include "../cabecalhoArvoreB/cabecalhoArvoreB.h"
 #include "../noArvoreB/noArvoreB.h"
 
-typedef struct
+typedef struct // Definicao do tipo que é usado para retornar dados sobre promoçoes realizadas recursivamente
 {
     int chave;
     int referencia;
@@ -19,55 +19,55 @@ int criarArquivoIndiceArvoreB(FILE *arquivoIndice)
 // Aloca um RRN novo ou reaproveita um no removido da pilha
 int alocarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int *rrn)
 {
-    if (cabecalho->topo != -1)
+    if (cabecalho->topo != -1) // há nó removido logicamente
     {
         NoArvoreB removido;
         *rrn = cabecalho->topo;
 
-        if (!lerNoArvoreB(arquivoIndice, *rrn, &removido))
+        if (!lerNoArvoreB(arquivoIndice, *rrn, &removido)) // pega os dados do removido e muda topo da pilha
             return 0;
         cabecalho->topo = removido.proximo;
     }
-    else
+    else // nao tem pilha de removidos logicamente
     {
-        *rrn = cabecalho->proxRRN;
+        *rrn = cabecalho->proxRRN; // pega prox rrn livre e soma 1 ao total
         cabecalho->proxRRN++;
     }
 
     cabecalho->nroNos++;
-    return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
+    return escreverCabecalhoArvoreB(arquivoIndice, cabecalho); // reescreve cabecalho no arquivo com infos atualizadas
 }
 
-// Busca sequencial dentro dos nos da arvore-B
+// Busca recursiva dentro dos nos da arvore-B
 int buscarArvoreBRec(FILE *arquivoIndice, int rrn, int chave, int *referencia)
 {
-    if (rrn == -1)
+    if (rrn == -1) // arvore vazia
         return 0;
 
     NoArvoreB no;
-    if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+    if (!lerNoArvoreB(arquivoIndice, rrn, &no)) // le nó em questão e salva localmente
         return 0;
 
-    int pos = buscarPosicaoNo(&no, chave);
-    if (pos < no.nroChaves && no.C[pos] == chave)
+    int pos = buscarPosicaoNo(&no, chave);        // busca se chave existe no nó/para qual nó descer
+    if (pos < no.nroChaves && no.C[pos] == chave) // caso em que achou
     {
         *referencia = no.PR[pos];
         return 1;
     }
 
-    return buscarArvoreBRec(arquivoIndice, no.P[pos], chave, referencia);
+    return buscarArvoreBRec(arquivoIndice, no.P[pos], chave, referencia); // busca denovo descendo no filho correto
 }
 
 int buscarArvoreB(FILE *arquivoIndice, int chave, int *referencia)
 {
     CabecalhoArvoreB cabecalho;
-    if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho))
+    if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho)) // le o cabecalho da arvore e começa busca no nó raiz
         return 0;
 
     return buscarArvoreBRec(arquivoIndice, cabecalho.noRaiz, chave, referencia);
 }
 
-// Copia chaves, referencias e ponteiros de um no para vetores temporarios
+// Copia chaves, referencias e ponteiros de um no para vetores temporarios(usado no split)
 static void copiarNoParaTemporarios(NoArvoreB *no, int chaves[], int referencias[], int ponteiros[])
 {
     for (int i = 0; i < MAX_CHAVES_ARVORE_B; i++)
@@ -82,12 +82,12 @@ static void copiarNoParaTemporarios(NoArvoreB *no, int chaves[], int referencias
     }
 }
 
-// Insere uma promocao nos vetores temporarios de um no cheio
+// Insere uma promocao nos vetores temporarios de um nó cheio(usado no split)
 static void inserirEmTemporarios(NoArvoreB *no, Promocao nova, int chaves[], int referencias[], int ponteiros[])
 {
     int pos = no->nroChaves;
 
-    while (pos > 0 && nova.chave < chaves[pos - 1])
+    while (pos > 0 && nova.chave < chaves[pos - 1]) // encontra a promocao no local certo, atualizando os vetores todos
     {
         chaves[pos] = chaves[pos - 1];
         referencias[pos] = referencias[pos - 1];
@@ -95,21 +95,21 @@ static void inserirEmTemporarios(NoArvoreB *no, Promocao nova, int chaves[], int
         pos--;
     }
 
-    chaves[pos] = nova.chave;
+    chaves[pos] = nova.chave; // realiza a gravaçao
     referencias[pos] = nova.referencia;
     ponteiros[pos + 1] = nova.filhoDireita;
 }
 
-// Divide um no cheio e retorna a chave que deve subir para o pai
+// Divide um no cheio passando os dois menores para o nó original, promovendo o terceiro e colocando o maior no novo nó a direita. Também devolve informaçoes sobre promocao
 static int splitNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrn,
                           NoArvoreB *no, Promocao nova, Promocao *promovida)
 {
-    int chaves[4];
+    int chaves[4]; // quatro chaves temporariamente, duas menores ficam na esquerda, terceira é promovida, quarta vai para novo nó na direita
     int referencias[4];
-    int ponteiros[5];
+    int ponteiros[5]; // temporariamente cinco ponteiros
     int rrnDireita;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) // inicializa os vetores temporarios vazios
     {
         chaves[i] = -1;
         referencias[i] = -1;
@@ -120,14 +120,14 @@ static int splitNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int 
         ponteiros[i] = -1;
     }
 
-    copiarNoParaTemporarios(no, chaves, referencias, ponteiros);
-    inserirEmTemporarios(no, nova, chaves, referencias, ponteiros);
+    copiarNoParaTemporarios(no, chaves, referencias, ponteiros);    // utiza auxiliar para copiar coisas para nó temporario
+    inserirEmTemporarios(no, nova, chaves, referencias, ponteiros); // insere nova chave no nó temporario
 
-    if (!alocarNoArvoreB(arquivoIndice, cabecalho, &rrnDireita))
+    if (!alocarNoArvoreB(arquivoIndice, cabecalho, &rrnDireita)) // aloca novo nó na direita
         return 0;
 
     NoArvoreB direita = criarNoArvoreBVazio(no->tipoNo == 0 ? 1 : no->tipoNo);
-    no->nroChaves = 2;
+    no->nroChaves = 2; // organiza o nó original mantendo apenas as duas menores chaves
     no->C[0] = chaves[0];
     no->PR[0] = referencias[0];
     no->C[1] = chaves[1];
@@ -135,33 +135,33 @@ static int splitNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int 
     no->C[2] = -1;
     no->PR[2] = -1;
 
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++) // zera inicialmente os ponteiros
     {
         no->P[i] = -1;
     }
 
-    if (no->tipoNo != -1)
+    if (no->tipoNo != -1) // aloca os ponteiros corretos caso o nó nao seja folha(como tem duas chaves tem tres filhos)
     {
         no->P[0] = ponteiros[0];
         no->P[1] = ponteiros[1];
         no->P[2] = ponteiros[2];
     }
 
-    direita.nroChaves = 1;
+    direita.nroChaves = 1; // atualiza as infos do novo nó criado na direita, que recebe a maior chave
     direita.C[0] = chaves[3];
     direita.PR[0] = referencias[3];
 
-    if (direita.tipoNo != -1)
+    if (direita.tipoNo != -1) // se nao é folha, atualiza os ponteiros
     {
         direita.P[0] = ponteiros[3];
         direita.P[1] = ponteiros[4];
     }
 
-    promovida->chave = chaves[2];
+    promovida->chave = chaves[2]; // recebe os dados da chave que será promovida
     promovida->referencia = referencias[2];
     promovida->filhoDireita = rrnDireita;
 
-    if (!escreverNoArvoreB(arquivoIndice, rrn, no))
+    if (!escreverNoArvoreB(arquivoIndice, rrn, no)) // escreve no original e novo no a direita em disco
         return 0;
     if (!escreverNoArvoreB(arquivoIndice, rrnDireita, &direita))
         return 0;
@@ -169,7 +169,7 @@ static int splitNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int 
     return 1;
 }
 
-// Insere recursivamente; retorna 1 quando ha promocao para o nivel acima
+// Insere recursivamente; retorna 1 em *houvePromocao quando ha promocao para o nivel acima
 static int inserirArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrn,
                              int chave, int referencia, Promocao *promovida, int *houvePromocao)
 {
@@ -177,7 +177,7 @@ static int inserirArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
     Promocao novaPromocao;
     int filhoPromoveu = 0;
 
-    if (rrn == -1)
+    if (rrn == -1) // caso de árvore vazia ou ponteiro novo, força uma promoção para adicionar novo nó
     {
         promovida->chave = chave;
         promovida->referencia = referencia;
@@ -186,45 +186,46 @@ static int inserirArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
         return 1;
     }
 
-    if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+    if (!lerNoArvoreB(arquivoIndice, rrn, &no)) // le o nó e encontra em qual posiçao correta dele
         return 0;
 
     int pos = buscarPosicaoNo(&no, chave);
 
-    if (no.tipoNo == -1)
+    if (no.tipoNo == -1) // caso em que nó é folha
     {
         novaPromocao.chave = chave;
-        novaPromocao.referencia = referencia;
+        novaPromocao.referencia = referencia; // cria promoção com infos novas caso haja necessidade de split
         novaPromocao.filhoDireita = -1;
 
-        if (no.nroChaves < MAX_CHAVES_ARVORE_B)
+        if (no.nroChaves < MAX_CHAVES_ARVORE_B) // caso chave caiba no nó e nao precise de split
         {
-            inserirChaveOrdenadaNo(&no, chave, referencia, -1);
+            inserirChaveOrdenadaNo(&no, chave, referencia, -1); // insire normalmente
             if (!escreverNoArvoreB(arquivoIndice, rrn, &no))
                 return 0;
             *houvePromocao = 0;
             return 1;
         }
 
-        if (!splitNoArvoreB(arquivoIndice, cabecalho, rrn, &no, novaPromocao, promovida))
+        if (!splitNoArvoreB(arquivoIndice, cabecalho, rrn, &no, novaPromocao, promovida)) // faz split caso nao caiba no nó
             return 0;
         *houvePromocao = 1;
         return 1;
     }
 
     if (!inserirArvoreBRec(arquivoIndice, cabecalho, no.P[pos], chave, referencia,
-                           &novaPromocao, &filhoPromoveu))
+                           &novaPromocao, &filhoPromoveu)) // caso em que nao é folha, desce para o filho correto
     {
         return 0;
     }
 
-    if (!filhoPromoveu)
+    if (!filhoPromoveu) // se o filho nao promoveu nada
     {
         *houvePromocao = 0;
         return 1;
     }
 
-    if (no.nroChaves < MAX_CHAVES_ARVORE_B)
+    // daqui pra baixo, situação em que houve promoçao vinda do filho
+    if (no.nroChaves < MAX_CHAVES_ARVORE_B) // insere normalmente caso haja espaço
     {
         inserirChaveOrdenadaNo(&no, novaPromocao.chave, novaPromocao.referencia, novaPromocao.filhoDireita);
         if (!escreverNoArvoreB(arquivoIndice, rrn, &no))
@@ -233,7 +234,7 @@ static int inserirArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
         return 1;
     }
 
-    if (!splitNoArvoreB(arquivoIndice, cabecalho, rrn, &no, novaPromocao, promovida))
+    if (!splitNoArvoreB(arquivoIndice, cabecalho, rrn, &no, novaPromocao, promovida)) // splita caso nao tenha espaço
         return 0;
     *houvePromocao = 1;
     return 1;
@@ -263,43 +264,43 @@ int inserirArvoreB(FILE *arquivoIndice, int chave, int referencia)
     Promocao promovida;
     int houvePromocao = 0;
 
-    if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho))
+    if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho)) // começa lendo cabeçalho para pegar infos
         return 0;
 
-    if (cabecalho.noRaiz == -1)
+    if (cabecalho.noRaiz == -1) // caso arvore vazia
     {
         int rrnRaiz;
-        if (!alocarNoArvoreB(arquivoIndice, &cabecalho, &rrnRaiz))
+        if (!alocarNoArvoreB(arquivoIndice, &cabecalho, &rrnRaiz)) // aloca rrn
             return 0;
 
         NoArvoreB raiz = criarNoArvoreBVazio(-1);
         raiz.nroChaves = 1;
-        raiz.C[0] = chave;
+        raiz.C[0] = chave; // passa infos da raiz
         raiz.PR[0] = referencia;
 
-        cabecalho.noRaiz = rrnRaiz;
-        if (!escreverNoArvoreB(arquivoIndice, rrnRaiz, &raiz))
+        cabecalho.noRaiz = rrnRaiz;                            // atualiza cabecalho
+        if (!escreverNoArvoreB(arquivoIndice, rrnRaiz, &raiz)) // escreve em disco
             return 0;
         return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho);
     }
 
-    int rrnRaizAntiga = cabecalho.noRaiz;
+    int rrnRaizAntiga = cabecalho.noRaiz; // guarda rrn da raiz antiga
     if (!inserirArvoreBRec(arquivoIndice, &cabecalho, cabecalho.noRaiz, chave, referencia,
-                           &promovida, &houvePromocao))
+                           &promovida, &houvePromocao)) // chama inserçao recursiva começando da raiz
     {
         return 0;
     }
 
-    if (houvePromocao)
+    if (houvePromocao) // caso em que ocorre split na raiz, logo raiz muda
     {
         int rrnNovaRaiz;
-        if (!alocarNoArvoreB(arquivoIndice, &cabecalho, &rrnNovaRaiz))
+        if (!alocarNoArvoreB(arquivoIndice, &cabecalho, &rrnNovaRaiz)) // aloca rrn da nova raiz
             return 0;
 
-        if (!transformarRaizAntigaEmFilho(arquivoIndice, rrnRaizAntiga))
+        if (!transformarRaizAntigaEmFilho(arquivoIndice, rrnRaizAntiga)) // chama funçao pra transformar antiga em filha
             return 0;
 
-        NoArvoreB novaRaiz = criarNoArvoreBVazio(0);
+        NoArvoreB novaRaiz = criarNoArvoreBVazio(0); // cria nova raiz preenchendo com os dados da chave promovida
         novaRaiz.nroChaves = 1;
         novaRaiz.C[0] = promovida.chave;
         novaRaiz.PR[0] = promovida.referencia;
@@ -311,17 +312,12 @@ int inserirArvoreB(FILE *arquivoIndice, int chave, int referencia)
             return 0;
     }
 
-    return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho);
+    return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho); // escreve cabeçalho atualizado em disco
 }
 
-static int noEhFolha(NoArvoreB *no)
+static int noEhFolha(NoArvoreB *no) // checa se nó é folha
 {
     return no->tipoNo == -1;
-}
-
-static void limparNoAtivo(NoArvoreB *no)
-{
-    inicializarCamposNaoUsadosComMenosUm(no);
 }
 
 static int escreverNoRemovidoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no)

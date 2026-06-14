@@ -320,7 +320,7 @@ static int noEhFolha(NoArvoreB *no) // checa se nó é folha
     return no->tipoNo == -1;
 }
 
-static int escreverNoRemovidoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no)
+static int escreverNoRemovidoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no) // escreve apenas os campos relativos a remoçao logica de um nó em disco
 {
     fseek(arquivoIndice, calcularOffsetNoArvoreB(rrn), SEEK_SET);
     if (fwrite(&no->removido, 1, 1, arquivoIndice) != 1)
@@ -334,7 +334,7 @@ static int escreverNoRemovidoArvoreB(FILE *arquivoIndice, int rrn, NoArvoreB *no
 static int liberarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrn)
 {
     NoArvoreB no;
-    if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+    if (!lerNoArvoreB(arquivoIndice, rrn, &no)) // le nó por rrn, marca como removido e atualiza cabeçalho
         return 0;
 
     no.removido = '1';
@@ -347,7 +347,7 @@ static int liberarNoArvoreB(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, in
     return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
 }
 
-static void removerChaveDoNo(NoArvoreB *no, int pos)
+static void removerChaveDoNo(NoArvoreB *no, int pos) // remove uma das chaves de dentro de um nó e desloca as que sobraram para a esquerda
 {
     for (int i = pos; i < no->nroChaves - 1; i++)
     {
@@ -359,11 +359,11 @@ static void removerChaveDoNo(NoArvoreB *no, int pos)
     limparNoAtivo(no);
 }
 
-static void removerSeparadorDoPai(NoArvoreB *pai, int posSeparador)
+static void removerSeparadorDoPai(NoArvoreB *pai, int posSeparador) // remove uma chave separadora de nó pai
 {
     int antigoNroChaves = pai->nroChaves;
 
-    for (int i = posSeparador; i < antigoNroChaves - 1; i++)
+    for (int i = posSeparador; i < antigoNroChaves - 1; i++) // desloca chaves e refs do pai para esquerda
     {
         pai->C[i] = pai->C[i + 1];
         pai->PR[i] = pai->PR[i + 1];
@@ -371,14 +371,14 @@ static void removerSeparadorDoPai(NoArvoreB *pai, int posSeparador)
 
     for (int i = posSeparador + 1; i < antigoNroChaves; i++)
     {
-        pai->P[i] = pai->P[i + 1];
+        pai->P[i] = pai->P[i + 1]; // desloca os ponteiros de filhos
     }
 
-    pai->nroChaves--;
+    pai->nroChaves--; // diminui numero de chaves e limpa espaços nao usados com -1
     limparNoAtivo(pai);
 }
 
-static int encontrarSucessorEmFolha(FILE *arquivoIndice, int rrnAtual, int *chave, int *referencia)
+static int encontrarSucessorEmFolha(FILE *arquivoIndice, int rrnAtual, int *chave, int *referencia) // encontra sucessor de chave em nó interno
 {
     NoArvoreB no;
 
@@ -404,30 +404,30 @@ static int encontrarSucessorEmFolha(FILE *arquivoIndice, int rrnAtual, int *chav
 
 static void juntarNosComSeparador(NoArvoreB *esquerda, NoArvoreB *direita, NoArvoreB *pai,
                                   int posSeparador, int chaves[], int referencias[], int ponteiros[])
-{
-    int qtd = 0;
+{                // usada antes de redistribuiçao para agrupar pai, filho esquerdo e filho direito em vetores para processamento
+    int qtd = 0; // controla quantidade de chaves ja copiadas
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 5; i++) // zera vetores de ponteiros temporarios
         ponteiros[i] = -1;
 
     if (!noEhFolha(esquerda))
     {
-        for (int i = 0; i <= esquerda->nroChaves; i++)
+        for (int i = 0; i <= esquerda->nroChaves; i++) // copia ponteiros da esquerda pro temporario(se nao for folha)
             ponteiros[i] = esquerda->P[i];
     }
 
-    for (int i = 0; i < esquerda->nroChaves; i++)
+    for (int i = 0; i < esquerda->nroChaves; i++) // copia chaves e referencias da esquerda pro vetor temporario
     {
         chaves[qtd] = esquerda->C[i];
         referencias[qtd] = esquerda->PR[i];
         qtd++;
     }
 
-    chaves[qtd] = pai->C[posSeparador];
+    chaves[qtd] = pai->C[posSeparador]; // insere chave separadora
     referencias[qtd] = pai->PR[posSeparador];
     qtd++;
 
-    if (!noEhFolha(direita))
+    if (!noEhFolha(direita)) // mesmo processo com filho direito
     {
         int inicio = esquerda->nroChaves + 1;
         for (int i = 0; i <= direita->nroChaves; i++)
@@ -445,14 +445,14 @@ static void juntarNosComSeparador(NoArvoreB *esquerda, NoArvoreB *direita, NoArv
 static void distribuirEntreNos(NoArvoreB *esquerda, NoArvoreB *direita, NoArvoreB *pai,
                                int posSeparador, int chaves[], int referencias[], int ponteiros[], int totalChaves)
 {
-    int qtdEsquerda = totalChaves / 2;
+    int qtdEsquerda = totalChaves / 2; // calcula como as chaves serao redistribuidas
     int posPromovida = qtdEsquerda;
     int qtdDireita = totalChaves - qtdEsquerda - 1;
 
-    esquerda->nroChaves = qtdEsquerda;
+    esquerda->nroChaves = qtdEsquerda; // atualiza qtd de chaves dos nós
     direita->nroChaves = qtdDireita;
 
-    for (int i = 0; i < MAX_CHAVES_ARVORE_B; i++)
+    for (int i = 0; i < MAX_CHAVES_ARVORE_B; i++) // limpa dados dos nós
     {
         esquerda->C[i] = -1;
         esquerda->PR[i] = -1;
@@ -466,22 +466,22 @@ static void distribuirEntreNos(NoArvoreB *esquerda, NoArvoreB *direita, NoArvore
         direita->P[i] = -1;
     }
 
-    for (int i = 0; i < qtdEsquerda; i++)
+    for (int i = 0; i < qtdEsquerda; i++) // coloca dados no nó da esquerda
     {
         esquerda->C[i] = chaves[i];
         esquerda->PR[i] = referencias[i];
     }
 
-    pai->C[posSeparador] = chaves[posPromovida];
+    pai->C[posSeparador] = chaves[posPromovida]; // atualiza chave separadora do pai. chave do meio vira chave que separa os dois filhos
     pai->PR[posSeparador] = referencias[posPromovida];
 
-    for (int i = 0; i < qtdDireita; i++)
+    for (int i = 0; i < qtdDireita; i++) // chaves depois da promovida para nó direito
     {
         direita->C[i] = chaves[posPromovida + 1 + i];
         direita->PR[i] = referencias[posPromovida + 1 + i];
     }
 
-    if (!noEhFolha(esquerda))
+    if (!noEhFolha(esquerda)) // redistribui os ponteiros se nó da esquerda for interno
     {
         for (int i = 0; i <= qtdEsquerda; i++)
             esquerda->P[i] = ponteiros[i];
@@ -489,7 +489,7 @@ static void distribuirEntreNos(NoArvoreB *esquerda, NoArvoreB *direita, NoArvore
             direita->P[i] = ponteiros[posPromovida + 1 + i];
     }
 
-    limparNoAtivo(esquerda);
+    limparNoAtivo(esquerda); // limpa campos nao usados no nó
     limparNoAtivo(direita);
     limparNoAtivo(pai);
 }
@@ -497,7 +497,7 @@ static void distribuirEntreNos(NoArvoreB *esquerda, NoArvoreB *direita, NoArvore
 static int redistribuirNos(FILE *arquivoIndice, int rrnPai, int posSeparador, int rrnEsquerda, int rrnDireita)
 {
     NoArvoreB pai, esquerda, direita;
-    int chaves[4], referencias[4], ponteiros[5];
+    int chaves[4], referencias[4], ponteiros[5]; // vetores temporarios para armazenar pai, esquerda e direita e suas infos
 
     if (!lerNoArvoreB(arquivoIndice, rrnPai, &pai))
         return 0;
@@ -506,11 +506,11 @@ static int redistribuirNos(FILE *arquivoIndice, int rrnPai, int posSeparador, in
     if (!lerNoArvoreB(arquivoIndice, rrnDireita, &direita))
         return 0;
 
-    juntarNosComSeparador(&esquerda, &direita, &pai, posSeparador, chaves, referencias, ponteiros);
-    distribuirEntreNos(&esquerda, &direita, &pai, posSeparador, chaves, referencias, ponteiros,
+    juntarNosComSeparador(&esquerda, &direita, &pai, posSeparador, chaves, referencias, ponteiros); // junta nos vetores auxiliares
+    distribuirEntreNos(&esquerda, &direita, &pai, posSeparador, chaves, referencias, ponteiros,     // distribui nós entre as chaves
                        esquerda.nroChaves + direita.nroChaves + 1);
 
-    if (!escreverNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda))
+    if (!escreverNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda)) // escreve nós atualizados em disco
         return 0;
     if (!escreverNoArvoreB(arquivoIndice, rrnDireita, &direita))
         return 0;
@@ -522,9 +522,10 @@ static int redistribuirNos(FILE *arquivoIndice, int rrnPai, int posSeparador, in
 
 static int concatenarNos(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrnPai,
                          int posSeparador, int rrnEsquerda, int rrnDireita)
-{
+{ // ocorre quando há underflow e não da para redistribuir com irmao
+
     NoArvoreB pai, esquerda, direita;
-    int pos = 0;
+    int pos = 0; // prox posicao livre no no esquerdo
 
     if (!lerNoArvoreB(arquivoIndice, rrnPai, &pai))
         return 0;
@@ -533,28 +534,28 @@ static int concatenarNos(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int r
     if (!lerNoArvoreB(arquivoIndice, rrnDireita, &direita))
         return 0;
 
-    pos = esquerda.nroChaves;
-    esquerda.C[pos] = pai.C[posSeparador];
+    pos = esquerda.nroChaves;              // começa a inserir no final do filho esquerdo
+    esquerda.C[pos] = pai.C[posSeparador]; // desce separador para filho esquerdo
     esquerda.PR[pos] = pai.PR[posSeparador];
     pos++;
 
-    for (int i = 0; i < direita.nroChaves; i++)
+    for (int i = 0; i < direita.nroChaves; i++) // copia chaves e referencias do direito para o esquerdo
     {
         esquerda.C[pos] = direita.C[i];
         esquerda.PR[pos] = direita.PR[i];
         pos++;
     }
 
-    if (!noEhFolha(&esquerda))
+    if (!noEhFolha(&esquerda)) // se nós não são folhas, é necessário juntar ponteiros dos filhos tambem
     {
         int inicio = esquerda.nroChaves + 1;
         for (int i = 0; i <= direita.nroChaves; i++)
             esquerda.P[inicio + i] = direita.P[i];
     }
 
-    esquerda.nroChaves = pos;
+    esquerda.nroChaves = pos; // atualiza n de chaves para chaves antigas da esquerda + separador + antigas da direita
     limparNoAtivo(&esquerda);
-    removerSeparadorDoPai(&pai, posSeparador);
+    removerSeparadorDoPai(&pai, posSeparador); // remove separadora que foi passada para a esquerda do nó pai
 
     if (!escreverNoArvoreB(arquivoIndice, rrnEsquerda, &esquerda))
         return 0;
@@ -567,35 +568,37 @@ static int concatenarNos(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int r
 }
 
 static int tratarUnderflow(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrnPai, int indiceFilho)
-{
-    NoArvoreB pai, irmao;
+{ // decide entre redistribuir e concatenar quando há underflow
+
+    NoArvoreB pai, irmao; // salva pai e irmao(irmao quando necessario)
 
     if (!lerNoArvoreB(arquivoIndice, rrnPai, &pai))
         return 0;
 
-    if (indiceFilho < pai.nroChaves && pai.P[indiceFilho + 1] != -1)
+    if (indiceFilho < pai.nroChaves && pai.P[indiceFilho + 1] != -1) // tenta ler irmao direito
     {
         if (!lerNoArvoreB(arquivoIndice, pai.P[indiceFilho + 1], &irmao))
             return 0;
-        if (irmao.nroChaves > 1)
+        if (irmao.nroChaves > 1) // se tem mais de uma chave, pode "emprestar", logo ocorre redistribuiçao
             return redistribuirNos(arquivoIndice, rrnPai, indiceFilho, pai.P[indiceFilho], pai.P[indiceFilho + 1]);
     }
 
-    if (indiceFilho > 0 && pai.P[indiceFilho - 1] != -1)
+    if (indiceFilho > 0 && pai.P[indiceFilho - 1] != -1) // verifica se tem irmao esquerdo
     {
         if (!lerNoArvoreB(arquivoIndice, pai.P[indiceFilho - 1], &irmao))
             return 0;
-        if (irmao.nroChaves > 1)
+        if (irmao.nroChaves > 1) // se tem mais de uma chave, ocorre redistribuicao com separador indiceFilho - 1
             return redistribuirNos(arquivoIndice, rrnPai, indiceFilho - 1, pai.P[indiceFilho - 1], pai.P[indiceFilho]);
     }
 
-    if (indiceFilho > 0 && pai.P[indiceFilho - 1] != -1)
+    // agora tenta concatenar sem nenhum irmao pode emprestar
+    if (indiceFilho > 0 && pai.P[indiceFilho - 1] != -1) // tenta concatenar na esquerda
         return concatenarNos(arquivoIndice, cabecalho, rrnPai, indiceFilho - 1, pai.P[indiceFilho - 1], pai.P[indiceFilho]);
 
-    if (indiceFilho < pai.nroChaves && pai.P[indiceFilho + 1] != -1)
+    if (indiceFilho < pai.nroChaves && pai.P[indiceFilho + 1] != -1) // tenta concatenar na direita
         return concatenarNos(arquivoIndice, cabecalho, rrnPai, indiceFilho, pai.P[indiceFilho], pai.P[indiceFilho + 1]);
 
-    return 1;
+    return 1; // se nada a ser feito, retorna sucesso
 }
 
 static int removerArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, int rrn,
@@ -603,22 +606,22 @@ static int removerArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
 {
     NoArvoreB no;
 
-    *encontrou = 0;
+    *encontrou = 0; // 0 para falso, 1 para verdadeiro
     *underflow = 0;
 
-    if (rrn == -1)
+    if (rrn == -1) // caso nao tenha encontrado(rrn invalido)
         return 1;
 
     if (!lerNoArvoreB(arquivoIndice, rrn, &no))
         return 0;
 
-    int pos = buscarPosicaoNo(&no, chave);
+    int pos = buscarPosicaoNo(&no, chave); // descobre a posicao onde a chave está ou deveria estar
 
-    if (pos < no.nroChaves && no.C[pos] == chave)
+    if (pos < no.nroChaves && no.C[pos] == chave) // encontrou a chave
     {
         *encontrou = 1;
 
-        if (noEhFolha(&no))
+        if (noEhFolha(&no)) // se for folha, só remove
         {
             removerChaveDoNo(&no, pos);
             if (!escreverNoArvoreB(arquivoIndice, rrn, &no))
@@ -632,42 +635,42 @@ static int removerArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
         int encontrouFilho, underflowFilho;
 
         if (!encontrarSucessorEmFolha(arquivoIndice, no.P[pos + 1], &chaveSucessora, &referenciaSucessora))
-            return 0;
+            return 0; // procura sucessor como menor chave da subarvore direita
 
         no.C[pos] = chaveSucessora;
-        no.PR[pos] = referenciaSucessora;
+        no.PR[pos] = referenciaSucessora; // coloca sucessora no lugar
         if (!escreverNoArvoreB(arquivoIndice, rrn, &no))
             return 0;
 
         if (!removerArvoreBRec(arquivoIndice, cabecalho, no.P[pos + 1], chaveSucessora, 0,
-                               &encontrouFilho, &underflowFilho))
+                               &encontrouFilho, &underflowFilho)) // remove chave sucessora onde ela estava originalmente
             return 0;
 
-        if (underflowFilho)
+        if (underflowFilho) // se deu underflow no filho direito após remover sucessor, trata isso
         {
             if (!tratarUnderflow(arquivoIndice, cabecalho, rrn, pos + 1))
                 return 0;
         }
 
-        if (!lerNoArvoreB(arquivoIndice, rrn, &no))
+        if (!lerNoArvoreB(arquivoIndice, rrn, &no)) // le denovo nó atual para atualizar após possível underflow
             return 0;
-        *underflow = (!ehRaiz && no.nroChaves < 1);
+        *underflow = (!ehRaiz && no.nroChaves < 1); // checa se nó atual ficou em underflow e retorna sucesso
         return 1;
     }
 
     if (noEhFolha(&no))
-        return 1;
+        return 1; // nao encontrou, retorna sucesso da operaçao mas encontrado = 0
 
-    if (no.P[pos] == -1)
+    if (no.P[pos] == -1) // se ponteiro para onde deveria descer nao existe, chave nao exidste
         return 1;
 
     int encontrouFilho, underflowFilho;
     if (!removerArvoreBRec(arquivoIndice, cabecalho, no.P[pos], chave, 0, &encontrouFilho, &underflowFilho))
-        return 0;
+        return 0; // desce para o filho correto onde a chave deveria estar
 
-    *encontrou = encontrouFilho;
+    *encontrou = encontrouFilho; // propaga info de se a chave foi encontrada ou n
 
-    if (underflowFilho)
+    if (underflowFilho) // corrige underflow do filho caso precise
     {
         if (!tratarUnderflow(arquivoIndice, cabecalho, rrn, pos))
             return 0;
@@ -679,7 +682,7 @@ static int removerArvoreBRec(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho, i
     return 1;
 }
 
-static int ajustarTipoRaiz(FILE *arquivoIndice, int rrnRaiz)
+static int ajustarTipoRaiz(FILE *arquivoIndice, int rrnRaiz) // garante que no raiz tenha tipo de raiz
 {
     NoArvoreB raiz;
     if (!lerNoArvoreB(arquivoIndice, rrnRaiz, &raiz))
@@ -693,53 +696,53 @@ static int ajustarTipoRaiz(FILE *arquivoIndice, int rrnRaiz)
 
 static int ajustarRaizAposRemocao(FILE *arquivoIndice, CabecalhoArvoreB *cabecalho)
 {
-    if (cabecalho->noRaiz == -1)
+    if (cabecalho->noRaiz == -1) // checa nó raiz
         return 1;
 
     NoArvoreB raiz;
-    int rrnRaizAntiga = cabecalho->noRaiz;
+    int rrnRaizAntiga = cabecalho->noRaiz; // guarda raiz antiga
 
     if (!lerNoArvoreB(arquivoIndice, cabecalho->noRaiz, &raiz))
         return 0;
 
     if (raiz.nroChaves > 0)
-        return ajustarTipoRaiz(arquivoIndice, cabecalho->noRaiz);
+        return ajustarTipoRaiz(arquivoIndice, cabecalho->noRaiz); // se raiz nao esta vazia continua como raiz
 
-    if (noEhFolha(&raiz))
+    if (noEhFolha(&raiz)) // caso em que arvore ficou vazia
     {
         cabecalho->noRaiz = -1;
-        if (!liberarNoArvoreB(arquivoIndice, cabecalho, rrnRaizAntiga))
+        if (!liberarNoArvoreB(arquivoIndice, cabecalho, rrnRaizAntiga)) // zera raiz, libera nós e atualiza cabeçalho
             return 0;
         return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
     }
 
-    int rrnNovaRaiz = raiz.P[0];
-    cabecalho->noRaiz = rrnNovaRaiz;
+    int rrnNovaRaiz = raiz.P[0];     // raiz está vazia mas nao é folha
+    cabecalho->noRaiz = rrnNovaRaiz; // raiz vira primeiro filho da raiz antiga
 
     if (!liberarNoArvoreB(arquivoIndice, cabecalho, rrnRaizAntiga))
         return 0;
     if (rrnNovaRaiz != -1 && !ajustarTipoRaiz(arquivoIndice, rrnNovaRaiz))
         return 0;
 
-    return escreverCabecalhoArvoreB(arquivoIndice, cabecalho);
+    return escreverCabecalhoArvoreB(arquivoIndice, cabecalho); // reescreve cabeçalho
 }
 
 int removerArvoreB(FILE *arquivoIndice, int chave)
 {
     CabecalhoArvoreB cabecalho;
-    int encontrou, underflow;
+    int encontrou, underflow; // para propagacao de encontrar e de underflow
 
     if (!lerCabecalhoArvoreB(arquivoIndice, &cabecalho))
         return 0;
 
-    if (cabecalho.noRaiz == -1)
+    if (cabecalho.noRaiz == -1) // arvore vazia
         return 1;
 
     if (!removerArvoreBRec(arquivoIndice, &cabecalho, cabecalho.noRaiz, chave, 1, &encontrou, &underflow))
-        return 0;
+        return 0; // inicia remocao recursiva
 
     if (!ajustarRaizAposRemocao(arquivoIndice, &cabecalho))
-        return 0;
+        return 0; // arruma raiz caso precise
 
-    return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho);
+    return escreverCabecalhoArvoreB(arquivoIndice, &cabecalho); // atualiza cabeçalho
 }

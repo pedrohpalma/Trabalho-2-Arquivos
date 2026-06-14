@@ -9,7 +9,7 @@ typedef struct // Definicao do tipo que é usado para retornar dados sobre promo
     int filhoDireita;
 } Promocao;
 
-// Inicializa o arquivo de indice com cabecalho inconsistente e arvore vazia
+// inicializa o arquivo de indice com arvore vazia
 int criarArquivoIndiceArvoreB(FILE *arquivoIndice)
 {
     CabecalhoArvoreB cabecalho = criarCabecalhoArvoreBVazio();

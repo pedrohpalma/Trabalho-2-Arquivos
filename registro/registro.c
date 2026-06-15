@@ -4,26 +4,23 @@
 #include "../utilitarios/utils.h"
 
 
-// Le uma linha do CSV e preenche todos os campos da struct Registro.
-// Campos ausentes (celula vazia) sao armazenados como -1 (int) ou string vazia (string).
+// Le uma linha do CSV e preenche todos os campos da struct Registro
+// Campos ausentes (celula vazia) sao armazenados como -1 (int) ou string vazia (string)
 void lerRegistroCSV(char *linha, Registro *r){
     char *ptr = linha;
     char campo[256];
 
-    // 1. codEstacao — obrigatorio, nunca nulo no CSV
+    // Lê os campos do csv
     getProxCampo(&ptr, campo);
     r->codEstacao = atoi(campo);
 
-    // 2. nomeEstacao — obrigatorio, nunca nulo no CSV
     getProxCampo(&ptr, campo);
     r->tamNomeEstacao = strlen(campo);
     strcpy(r->nomeEstacao, campo);
 
-    // 3. codLinha — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->codLinha = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 4. nomeLinha — pode ser vazio (NULO = string vazia, tamanho 0)
     getProxCampo(&ptr, campo);
     if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
         r->tamNomeLinha = 0;
@@ -33,19 +30,15 @@ void lerRegistroCSV(char *linha, Registro *r){
         strcpy(r->nomeLinha, campo);
     }
 
-    // 5. codProxEstacao — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->codProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 6. distProxEstacao — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->distProxEstacao = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 7. codLinhaIntegra — pode ser vazio (NULO = -1)
     getProxCampo(&ptr, campo);
     r->codLinhaIntegra = (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') ? -1 : atoi(campo);
 
-    // 8. codEstIntegra — ultimo campo; pode trazer '\r' ou '\n' residual do fim de linha
     getProxCampo(&ptr, campo);
     if (campo[0] == '\0' || campo[0] == ' ' || campo[0] == '\r' || campo[0] == '\n') {
         r->codEstIntegra = -1;
@@ -53,14 +46,14 @@ void lerRegistroCSV(char *linha, Registro *r){
         r->codEstIntegra = atoi(campo);
     }
 
-    // Campos de controle: registro ativo e sem proximo na pilha de removidos
+    // Campos de controle, registro ativo e sem proximo na pilha de removidos
     r->removido = '0';
     r->proximo = -1;
 }
 
 
-// Serializa o Registro no arquivo binario, garantindo exatamente TAM_REGISTRO (80) bytes.
-// O espaco restante apos os campos e preenchido com '$' para manter o tamanho fixo.
+// Serializa o Registro no arquivo binario, garantindo exatamente TAM_REGISTRO (80) bytes
+// O espaco restante apos os campos e preenchido com '$' para manter o tamanho fixo
 void escreveRegistroBin(FILE *bin, Registro *r){
     fwrite(&r->removido, 1, 1, bin);
     fwrite(&r->proximo, 4, 1, bin);
@@ -83,7 +76,6 @@ void escreveRegistroBin(FILE *bin, Registro *r){
     }
 
     // Calcula quantos bytes faltam para completar os 80 fixos e preenche com '$'
-    // 37 = 1(removido) + 4(proximo) + 6*4(ints fixos) + 4(tamNome1) + 4(tamNome2)
     int bytes_escritos = 37 + r->tamNomeEstacao + r->tamNomeLinha;
     int lixo = TAM_REGISTRO - bytes_escritos;
     char cifrao = '$';
@@ -93,8 +85,7 @@ void escreveRegistroBin(FILE *bin, Registro *r){
 }
 
 
-// Le exatamente TAM_REGISTRO bytes do binario e desserializa para a struct Registro.
-// Retorna: 0 = EOF, 1 = leitura normal, 2 = registro removido (pulado).
+// Le exatamente TAM_REGISTRO bytes do binario e desserializa para a struct Registro
 int leRegistroBin(FILE *bin, Registro *r){
     // Tenta ler o byte 'removido'; EOF indica fim dos registros
     if (fread(&r->removido, 1, 1, bin) != 1) {
@@ -167,9 +158,9 @@ void imprimeRegistro(Registro *r){
 }
 
 
-// Verifica se o Registro satisfaz um criterio de busca (campo == valor).
-// Trata tanto campos inteiros quanto strings, alem de buscas por NULO.
-// Retorna 1 se o criterio e atendido, 0 caso contrario ou campo desconhecido.
+// Verifica se o Registro satisfaz um criterio de busca (campo == valor)
+// Trata tanto campos inteiros quanto strings, alem de buscas por NULO
+// Retorna 1 se o criterio e atendido, 0 caso contrario ou campo desconhecido
 int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo){
     if (strcmp(campo, "codEstacao") == 0) {
         return isNulo ? (r->codEstacao == -1) : (r->codEstacao == valorInt);
@@ -183,7 +174,7 @@ int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int i
     else if (strcmp(campo, "distProxEstacao") == 0) {
         return isNulo ? (r->distProxEstacao == -1) : (r->distProxEstacao == valorInt);
     }
-    // Aceita tanto "codLinhaIntegra" quanto a variante com 'l' minusculo (typo historico do CSV)
+    // Aceita tanto "codLinhaIntegra" quanto a variante com 'l' minusculo
     else if (strcmp(campo, "codLinhaIntegra") == 0 || strcmp(campo, "codLinhalntegra") == 0) {
         return isNulo ? (r->codLinhaIntegra == -1) : (r->codLinhaIntegra == valorInt);
     }
@@ -200,16 +191,16 @@ int atendeCriterio(Registro *r, char *campo, char *valorStr, int valorInt, int i
 }
 
 
-// Le os campos de um novo Registro a partir da entrada padrao.
-// Strings sao lidas com ScanQuoteString; "NULO" e convertido para -1 (int) ou string vazia.
+// Le os campos de um novo Registro a partir da entrada
+// Strings sao lidas com ScanQuoteString; "NULO" e convertido para -1 (int) ou string vazia
 void leRegistroTeclado(Registro *r) {
     char buffer[256];
 
-    // 1. codEstacao
+    // codEstacao
     scanf("%s", buffer);
     r->codEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 2. nomeEstacao
+    // nomeEstacao
     ScanQuoteString(buffer);
     if (strcmp(buffer, "") == 0 || strcmp(buffer, "NULO") == 0) {
         r->tamNomeEstacao = 0;
@@ -219,11 +210,11 @@ void leRegistroTeclado(Registro *r) {
         strcpy(r->nomeEstacao, buffer);
     }
 
-    // 3. codLinha
+    // codLinha
     scanf("%s", buffer);
     r->codLinha = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 4. nomeLinha
+    // nomeLinha
     ScanQuoteString(buffer);
     if (strcmp(buffer, "") == 0 || strcmp(buffer, "NULO") == 0) {
         r->tamNomeLinha = 0;
@@ -233,30 +224,30 @@ void leRegistroTeclado(Registro *r) {
         strcpy(r->nomeLinha, buffer);
     }
 
-    // 5. codProxEstacao
+    // codProxEstacao
     scanf("%s", buffer);
     r->codProxEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 6. distProxEstacao
+    // distProxEstacao
     scanf("%s", buffer);
     r->distProxEstacao = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 7. codLinhaIntegra
+    // codLinhaIntegra
     scanf("%s", buffer);
     r->codLinhaIntegra = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
 
-    // 8. codEstIntegra
+    // codEstIntegra
     scanf("%s", buffer);
     r->codEstIntegra = (strcmp(buffer, "NULO") == 0) ? -1 : atoi(buffer);
     
-    // Campos de controle: registro novo e sempre ativo e sem proximo na pilha
+    // Campos de controle, registro novo e sempre ativo e sem proximo na pilha
     r->removido = '0';
     r->proximo = -1;
 }
 
 
-// Atualiza um campo especifico do Registro com o novo valor fornecido.
-// Para strings, trata o caso NULO (limpa o campo) e o caso normal (copia o novo valor).
+// Atualiza um campo especifico do Registro com o novo valor fornecido
+// Para strings, trata o caso NULO (limpa o campo) e o caso normal (copia o novo valor)
 void atualizaCampo(Registro *r, char *campo, char *valorStr, int valorInt, int isNulo) {
     if (strcmp(campo, "codEstacao") == 0) r->codEstacao = valorInt;
     else if (strcmp(campo, "codLinha") == 0) r->codLinha = valorInt;
@@ -289,7 +280,7 @@ int campoString(char *campo){
     return strcmp(campo, "nomeEstacao") == 0 || strcmp(campo, "nomeLinha") == 0;
 }
 
-// Função auxiliar para ler os critérios de busca ou atualização, identificando campos string e inteiros, e tratando o caso NULO.
+// Função auxiliar para ler os critérios de busca ou atualização, identificando campos string e inteiros, e tratando o caso NULO
 void lerCriteriosBusca(CampoBusca criterios[], int qtdCriterios, int *possuiCodEstacao, int *valorCodEstacao){
     *possuiCodEstacao = 0;
     *valorCodEstacao = -1;
@@ -326,8 +317,8 @@ void lerCriteriosBusca(CampoBusca criterios[], int qtdCriterios, int *possuiCodE
     }
 }
 
-// Verifica se o Registro satisfaz todos os criterios de busca fornecidos.
-// Retorna 1 se o registro atende a todos os criterios, 0 caso contrario.
+// Verifica se o Registro satisfaz todos os criterios de busca fornecidos
+// Retorna 1 se o registro atende a todos os criterios, 0 caso contrario
 int registroSatisfazCriterios(Registro *r, CampoBusca criterios[], int qtdCriterios){
     if (r->removido == '1'){
         return 0;

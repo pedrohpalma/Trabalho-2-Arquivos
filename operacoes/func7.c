@@ -7,6 +7,7 @@
 #include "../arvoreB/arvoreB.h"
 #include "../cabecalhoArvoreB/cabecalhoArvoreB.h"
 
+// função para criar índice a partir do arquivo de dados binário
 void func7(char *arqEntrada, char *arqIndice)
 {
     FILE *bin = abrirArquivo(arqEntrada, "rb"); // abertura do arquivo e verificaçao de processamento

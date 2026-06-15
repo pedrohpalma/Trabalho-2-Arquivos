@@ -4,8 +4,8 @@
 #include <ctype.h>
 #include "utils.h"
 
-// Extrai o proximo campo CSV de '*line_ptr', copiando para 'field' e avancando o ponteiro alem do separador.
-// Implementado manualmente para evitar problemas de estado global do strtok.
+// Extrai o proximo campo CSV de '*line_ptr', copiando para 'field' e avancando o ponteiro alem do separador
+// Implementado manualmente para evitar problemas de estado global do scanf
 void getProxCampo(char **line_ptr, char *field){
     char *p = *line_ptr;
     int i = 0;
@@ -21,7 +21,7 @@ void getProxCampo(char **line_ptr, char *field){
 }
 
 
-// Funcao fornecida: calcula e imprime o checksum do arquivo binario (soma de bytes / 100.0)
+// Funcao fornecida: calcula e imprime o checksum do arquivo binario
 void BinarioNaTela(char *arquivo){
     FILE *fs;
     if (arquivo == NULL || !(fs = fopen(arquivo, "rb"))){
@@ -43,10 +43,10 @@ void BinarioNaTela(char *arquivo){
 }
 
 
-// Funcao fornecida: le uma string da entrada padrao que pode estar entre aspas ou ser "NULO".
-// Strings entre aspas: extrai o conteudo interno sem as aspas.
-// "NULO" ou "nulo": armazena string vazia em 'str'.
-// Outros valores: lidos normalmente como token.
+// Funcao fornecida: le uma string da entrada padrao que pode estar entre aspas ou ser "NULO"
+// Strings entre aspas: extrai o conteudo interno sem as aspas
+// "NULO" ou "nulo": armazena string vazia em 'str'
+// Outros valores: lidos normalmente como token
 void ScanQuoteString(char *str) {
     char R;
     // Consome espacos em branco iniciais

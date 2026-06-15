@@ -1,12 +1,8 @@
 #include "../arquivos/arquivos.h"
 #include <stdio.h>
 
-/*
- * Estas funcoes encapsulam fopen e fclose para centralizar o acesso
- * a arquivos no projeto. Foram criadas prevendo possiveis ajustes futuros
- * na logica de abertura (ex.: tratamento de erros customizado, logging),
- * mesmo que atualmente se comportem de forma identica as chamadas padrao.
- */
+
+//Funções encapsulam fopen e fclose para centralizar o acesso a arquivos no projeto
 
 // Abre o arquivo 'nome' no modo indicado e retorna o ponteiro; NULL em caso de falha
 FILE* abrirArquivo(char *nome, char *modo) {

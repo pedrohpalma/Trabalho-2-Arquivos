@@ -20,6 +20,9 @@ typedef struct
     int P[4];
 } NoArvoreB;
 
+// Limpa os campos de chaves, referencias e filhos de um nó ativo para garantir que não haja lixo de memória
+void limparNoAtivo(NoArvoreB *no);
+
 // Inicializa e retorna um novo no na memoria.
 NoArvoreB criarNoArvoreBVazio(int tipoNo);
 
